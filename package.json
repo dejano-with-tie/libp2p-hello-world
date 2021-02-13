@@ -1,0 +1,45 @@
+{
+  "name": "libp2p-hello-world",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc",
+    "dev": "ts-node-dev --respawn --transpileOnly src/index.ts"
+  },
+  "dependencies": {
+    "@nodeutils/defaults-deep": "^1.1.0",
+    "debug": "^4.3.1",
+    "it-pipe": "^1.1.0",
+    "libp2p": "^0.30.8",
+    "libp2p-bootstrap": "^0.12.2",
+    "libp2p-gossipsub": "^0.8.0",
+    "libp2p-kad-dht": "^0.20.6",
+    "libp2p-mdns": "^0.15.0",
+    "libp2p-mplex": "^0.10.2",
+    "libp2p-noise": "^2.0.4",
+    "libp2p-tcp": "^0.15.3",
+    "multiaddr": "^8.0.0",
+    "peer-id": "^0.14.3",
+    "protons": "^2.0.0",
+    "streaming-iterables": "^5.0.2",
+    "uint8arrays": "^1.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dejano-with-tie/libp2p-hello-world.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dejano-with-tie/libp2p-hello-world/issues"
+  },
+  "homepage": "https://github.com/dejano-with-tie/libp2p-hello-world#readme",
+  "devDependencies": {
+    "@types/node": "^14.14.27",
+    "ts-node-dev": "^1.1.1",
+    "tslint": "^6.1.3",
+    "typescript": "^4.1.5"
+  }
+}
