@@ -138,9 +138,9 @@ class Node {
     async getPeerId(): Promise<PeerId> {
         const peerIdPath = path.join(__dirname, '..', 'config', 'peer-id.json');
         try {
-            return PeerId.createFromJSON((JSON.parse((await fs.readFile(peerIdPath)).toString())));
+            return await PeerId.createFromJSON((JSON.parse((await fs.readFile(peerIdPath)).toString())));
         } catch (e) {
-            logger.warning(e);
+            logger.warn(e);
         }
         const id = await PeerId.create();
         await fs.writeFile(peerIdPath, JSON.stringify(id, null, 4));
