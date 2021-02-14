@@ -92,4 +92,4 @@ Thumbs.db
 
 lib
 *.js
-config/
+config/*.json
