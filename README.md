@@ -12,6 +12,18 @@ Just playing around with libp2p library. Application (peer) is able to perform t
 
 There are multiple ways to run the application
 
+### Using docker ###
+
+- Build docker image
+```
+docker build -t libp2p-app .
+```
+
+- Run docker container
+```
+docker run -p 0.0.0.0:8000:8000/tcp -p 0.0.0.0:3000:3000/tcp --name p2p -it libp2p-app
+```
+
 ### Using npm ###
 
 ```
