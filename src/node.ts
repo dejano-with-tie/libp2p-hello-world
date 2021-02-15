@@ -11,6 +11,7 @@ import Multiaddr from "multiaddr";
 import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
+import {handler, PROTOCOL, send} from './command';
 
 const TCP = require('libp2p-tcp');
 const Mplex = require('libp2p-mplex');
@@ -65,12 +66,36 @@ class Node {
 
             this.node = await Libp2p.create(this.defaults);
             await this.node.start();
-            logger.info(`ID: ${this.node.peerId.toB58String()}`);
+            logger.info(`Node ID: ${this.node.peerId.toB58String()}`);
 
             const listenAddrs = this.node.transportManager.getAddrs();
             logger.debug('libp2p is listening on the following addresses: ', listenAddrs);
             const advertiseAddrs = this.node.multiaddrs;
             logger.debug('libp2p is advertising the following addresses: ', advertiseAddrs);
+
+            // Add command handler
+            this.node.handle(PROTOCOL, handler)
+            // Set up our input handler
+            process.stdin.on('data', (message) => {
+                // remove the newline
+                message = message.slice(0, -1)
+                // Iterate over all peers, and send messages to peers we are connected to
+                this.node?.peerStore.peers.forEach(async (peerData) => {
+                    // If they dont support the chat protocol, ignore
+                    if (!peerData.protocols.includes(PROTOCOL)) return
+
+                    // If we're not connected, ignore
+                    const connection = this.node?.connectionManager.get(peerData.id)
+                    if (!connection) return
+
+                    try {
+                        const {stream} = await connection.newStream([PROTOCOL])
+                        await send(message, stream)
+                    } catch (err) {
+                        console.error('Could not negotiate chat protocol stream with peer', err)
+                    }
+                })
+            })
 
             const events = new Map<string, any | EventEmitter>([
                 ['peer:connect', this.node.connectionManager],
