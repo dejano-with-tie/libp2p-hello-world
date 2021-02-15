@@ -30,7 +30,7 @@ class Node {
     private defaults = {
         addresses: {
             listen: [
-                '/ip4/0.0.0.0/tcp/0',
+                '/ip4/0.0.0.0/tcp/8000',
             ]
         },
         modules: {
