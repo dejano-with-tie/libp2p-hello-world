@@ -20,15 +20,15 @@ router.get('/error', function (req, res, next) {
 });
 
 // express-winston logger makes sense BEFORE the router
-app.use(expressWinston.logger({
-    transports: [
-        new winston.transports.Console()
-    ],
-    format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.json()
-    )
-}));
+// app.use(expressWinston.logger({
+//     transports: [
+//         new winston.transports.Console()
+//     ],
+//     format: winston.format.combine(
+//         winston.format.colorize(),
+//         winston.format.json()
+//     )
+// }));
 
 // Now we can tell the app to use our routing code:
 app.use(router);
@@ -54,28 +54,25 @@ function listen(port: number, node: Node) {
     });
 
 
-    router.get('/publish/:name', async (req: express.Request, res: express.Response) => {
-        const name = req.params['name'];
-        console.log(`publish ${name}`);
+    router.get('/publish/:path', async (req: express.Request, res: express.Response) => {
+        const path = req.params['path'];
 
         try {
-            if (await node.publish(name)) {
-                res.status(200).send({
-                    message: `published ${name}`
-                });
-                return;
-            }
+            await node.publish(path);
+            res.status(200).send({
+                message: `published ${path}`
+            });
+            return;
         } catch (e) {
             res.status(400).send({
-                message: `failed to publish ${name}`
+                message: `failed to publish ${path}`
             });
-            logger.error(e);
+            logger.error(e.toString());
         }
     });
 
     router.get('/find/:name', async (req: express.Request, res: express.Response) => {
         const name = req.params['name'];
-        console.log(`find ${name}`);
 
         try {
             const providers = await node.find(name);
@@ -85,7 +82,7 @@ function listen(port: number, node: Node) {
             res.status(404).send({
                 message: `No one has ${name}`
             });
-            logger.error(e);
+            logger.error(e.toString());
         }
     });
 

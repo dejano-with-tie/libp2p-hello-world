@@ -3,20 +3,6 @@ import pipe from 'it-pipe';
 // Define the codec of our chat protocol
 const PROTOCOL = '/libp2p/command/1.0.0'
 
-const AutoReplies = [
-    'You tell the best stories!',
-    'Did you know Im actually a robot?',
-    'Speaking of... did you ever see that movie Splash? Mermaids are neat.',
-    'this is my favorite chat',
-    'i hope there are muffins to eat on the break, im hungry',
-    'doo doo deee, we\'re sorry, the number you dialed cannot be reached',
-    'remember the sound of dial up internet? they should bring that back',
-    'how do you feel about Go? JS is way cooler am i right?!',
-    'I was wondering when you were going to call',
-    'that is really neat',
-    'beep bop boop'
-]
-
 /**
  * A simple handler to print incoming messages to the console
  * @param {Object} params
@@ -32,7 +18,7 @@ async function handler ({ connection, stream }: ({ connection: any, stream: any 
                     console.info(`${connection.remotePeer.toB58String().slice(0, 8)}: ${String(message)}`)
 
                     // Auto reply on the same stream
-                    yield AutoReplies[Math.floor(Math.random() * AutoReplies.length)]
+                    // yield AutoReplies[Math.floor(Math.random() * AutoReplies.length)]
                 }
             })(),
             stream

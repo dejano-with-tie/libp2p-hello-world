@@ -31,6 +31,7 @@
     "libp2p-noise": "^2.0.4",
     "libp2p-pubsub-peer-discovery": "^3.0.0",
     "libp2p-tcp": "^0.15.3",
+    "libp2p-utils": "^0.2.3",
     "multiaddr": "^8.0.0",
     "multiformats": "^4.5.2",
     "nat-api": "^0.3.0",

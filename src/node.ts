@@ -3,7 +3,6 @@ import logger from './logger';
 import {NOISE} from 'libp2p-noise';
 import Bootstrap from 'libp2p-bootstrap';
 import Gossipsub from 'libp2p-gossipsub';
-const PubsubPeerDiscovery = require('libp2p-pubsub-peer-discovery')
 import json from 'multiformats/codecs/json'
 import {sha256} from 'multiformats/hashes/sha2'
 import CID from 'cids';
@@ -13,6 +12,9 @@ import EventEmitter from 'events';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {handler, PROTOCOL, send} from './command';
+import {Protocol} from './protocol';
+
+const PubsubPeerDiscovery = require('libp2p-pubsub-peer-discovery')
 
 const TCP = require('libp2p-tcp');
 const Mplex = require('libp2p-mplex');
@@ -56,6 +58,7 @@ class Node {
 
         }
     };
+    private protocol: Protocol | undefined;
 
     constructor(natType: NatType) {
         (this.defaults.config as any).relay = Node.getRelayOptions(natType);
@@ -75,7 +78,8 @@ class Node {
             logger.debug('libp2p is advertising the following addresses: ', advertiseAddrs);
 
             // Add command handler
-            this.node.handle(PROTOCOL, handler)
+            this.node.handle(PROTOCOL, handler);
+            this.protocol = new Protocol(this.node);
             // Set up our input handler
             process.stdin.on('data', (message) => {
                 // remove the newline
@@ -102,6 +106,7 @@ class Node {
                 ['peer:connect', this.node.connectionManager],
                 ['peer:disconnect', this.node.connectionManager],
                 ['peer:discovery', this.node],
+                ['peer', this.node.peerStore],
                 ['loggable', this.node],
             ]);
             this.propagateEvents(events);
@@ -133,28 +138,12 @@ class Node {
         this.node?.stop();
     }
 
-    async publish(name: string): Promise<boolean> {
-        const bytes = json.encode({name: name});
-        const hash = await sha256.digest(bytes);
-        const cid: CID = new CID(1, json.code, hash.bytes);
-
-        // const vals = await this.node._dht.getMany(cid.bytes, 1);
-        // logger.info(`vals: ${vals}`);
-
-        await this.node?.contentRouting.provide(cid);
-        return true;
+    async publish(filePath: string): Promise<void> {
+        await this.protocol?.publish(filePath);
     }
 
-    async find(name: string): Promise<{ id: PeerId, multiaddrs: Multiaddr[] }[]> {
-        const bytes = json.encode({name: name});
-        const hash = await sha256.digest(bytes);
-        const cid: CID = new CID(1, json.code, hash.bytes);
-
-        const arr = [];
-        const providers = await this.node?.contentRouting.findProviders(cid);
-        // @ts-ignore
-        for await(const p of providers) arr.push(p);
-        return arr;
+    async find(name: string): Promise<{ id: PeerId; multiaddrs: Multiaddr[] }[] | undefined> {
+        return this.protocol?.find(name);
     }
 
     public whoAmI() {
@@ -175,9 +164,25 @@ class Node {
     }
 
     private propagateEvents(events: Map<string, any | EventEmitter>) {
+        const toString = (id: string, original: any) => {
+            let message = `[${id}] `;
+
+            if (original.remotePeer) {
+                console.log(message);
+                message = message.concat(`(${original.remotePeer.toB58String()}) `);
+            }
+            if (original.remoteAddr) {
+                message = message.concat(`${original.remoteAddr.toString()}`);
+            }
+
+            if (!original.remotePeer && !original.remoteAddr) {
+                message = message.concat(`${original}`)
+            }
+            return message;
+        }
         events.forEach((v, id) => {
             v.on(id, (original: any) => {
-                logger.debug(`[${id}] (${original.remotePeer?.toB58String()}) ${original.remoteAddr?.toString()}`);
+                logger.debug(toString(id, original));
                 this.eventEmitter.emit('app:event', {id, original})
             })
         });
