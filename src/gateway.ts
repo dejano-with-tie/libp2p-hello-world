@@ -106,8 +106,8 @@ function listen(port: number, node: Node) {
         })
     })
 
-    app.listen(3000, () => {
-        logger.info(`API Gateway available at http://localhost:${3000}`);
+    app.listen(port, () => {
+        logger.info(`API Gateway available at http://localhost:${port}`);
     });
 }
 
