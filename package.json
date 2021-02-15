@@ -13,11 +13,14 @@
   },
   "dependencies": {
     "@nodeutils/defaults-deep": "^1.1.0",
+    "blessed": "^0.1.81",
+    "chalk": "^2.4.2",
     "cids": "^1.1.5",
     "debug": "^4.3.1",
     "delay": "^4.4.1",
     "express": "^4.17.1",
     "express-winston": "^4.0.5",
+    "figures": "^3.2.0",
     "it-pipe": "^1.1.0",
     "libp2p": "^0.30.8",
     "libp2p-bootstrap": "^0.12.2",
@@ -47,6 +50,7 @@
   },
   "homepage": "https://github.com/dejano-with-tie/libp2p-hello-world#readme",
   "devDependencies": {
+    "@types/blessed": "^0.1.17",
     "@types/debug": "^4.1.5",
     "@types/express": "^4.17.11",
     "@types/node": "^14.14.27",
