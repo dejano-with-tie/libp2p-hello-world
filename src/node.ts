@@ -3,6 +3,7 @@ import logger from './logger';
 import {NOISE} from 'libp2p-noise';
 import Bootstrap from 'libp2p-bootstrap';
 import Gossipsub from 'libp2p-gossipsub';
+const PubsubPeerDiscovery = require('libp2p-pubsub-peer-discovery')
 import json from 'multiformats/codecs/json'
 import {sha256} from 'multiformats/hashes/sha2'
 import CID from 'cids';
@@ -36,7 +37,7 @@ class Node {
             transport: [TCP],
             streamMuxer: [Mplex],
             connEncryption: [NOISE],
-            peerDiscovery: [Bootstrap],
+            peerDiscovery: [Bootstrap, PubsubPeerDiscovery],
             dht: KadDHT,
             pubsub: Gossipsub
         },
