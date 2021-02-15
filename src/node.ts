@@ -42,7 +42,7 @@ class Node {
         config: {
             peerDiscovery: {
                 bootstrap: {
-                    list: ['/ip4/54.175.90.157/tcp/8000/ipfs/QmWjz6xb8v9K4KnYEwP5Yk75k5mMBCehzWFLCvvQpYxF3d']
+                    list: ['/ip4/54.175.90.157/tcp/8000/ipfs/QmfCEMJ1wjsGuXNwnPa8H3dZ8CDGjmbWWFnjghxJ18ZJhs']
                 }
             },
             dht: {
