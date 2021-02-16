@@ -6,6 +6,10 @@ import {sha256} from 'multiformats/hashes/sha2'
 import path from 'path';
 import logger from "./logger";
 import pipe from "it-pipe";
+import first from 'it-first';
+
+const errcode = require('err-code');
+// import errorcode from 'err';
 
 const {publicAddressesFirst} = require('libp2p-utils/src/address-sort');
 // import Connection from 'libp2p'
@@ -101,20 +105,33 @@ export class Protocol {
             for await(const provider of providers) {
                 console.log(provider);
                 const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
-                pipe(
+                const response = await pipe(
                     // Source data
                     [`${name}`],
                     // Write to the stream, and pass its output to the next function
                     stream,
                     // Sink function
-                    async function (source: any) {
-                        // For each chunk of data
-                        for await (const data of source) {
-                            // Output the data
-                            console.log('received echo:', data.toString())
+                    async (source: any) => {
+                        const buf: any = await first(source)
+
+                        if (buf) {
+                            return buf.slice()
                         }
                     }
+
+
+                    // async function (source: any) {
+                    //     // For each chunk of data
+                    //     for await (const data of source) {
+                    //         // Output the data
+                    //         console.log('received echo:', data.toString())
+                    //     }
+                    // }
                 )
+
+                if (response.length === 0) {
+                    throw errcode(new Error('No message received'), 'ERR_NO_MESSAGE_RECEIVED')
+                }
             }
         } catch (e) {
             console.error(e);
