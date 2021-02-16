@@ -129,7 +129,8 @@ export class Protocol {
                 stream,
                 (source: any) => (async function* () {
                     for await (const message of source) {
-                        console.info(`${connection.remotePeer.toB58String().slice(0, 8)}: ${String(message)}`)
+                        console.info(`[RECV] ${connection.remotePeer.toB58String().slice(0, 8)}: ${String(message)}`)
+                        yield `allright, received '${message}' and returning this`;
                     }
                 })(),
                 stream
