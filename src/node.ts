@@ -1,24 +1,22 @@
 import Libp2p, {RelayOptions} from 'libp2p';
 import logger from './logger';
 import {NOISE} from 'libp2p-noise';
-import Bootstrap from 'libp2p-bootstrap';
 import Gossipsub from 'libp2p-gossipsub';
-import json from 'multiformats/codecs/json'
-import {sha256} from 'multiformats/hashes/sha2'
-import CID from 'cids';
 import PeerId from "peer-id";
 import Multiaddr from "multiaddr";
 import EventEmitter from 'events';
+
 import {promises as fs} from 'fs';
 import path from 'path';
-import {handler, PROTOCOL, send} from './command';
 import {Protocol} from './protocol';
+import Bootstrap from "libp2p-bootstrap";
 
 const PubsubPeerDiscovery = require('libp2p-pubsub-peer-discovery')
 
 const TCP = require('libp2p-tcp');
 const Mplex = require('libp2p-mplex');
 const KadDHT = require('libp2p-kad-dht');
+const MulticastDNS = require('libp2p-mdns');
 
 enum NatType {
     OpenInternet,
@@ -28,11 +26,11 @@ enum NatType {
 
 class Node {
     public eventEmitter: EventEmitter = new EventEmitter();
-    private node: Libp2p | undefined;
+    public node: Libp2p | undefined;
     private defaults = {
         addresses: {
             listen: [
-                '/ip4/0.0.0.0/tcp/8000',
+                '/ip4/0.0.0.0/tcp/0',
             ]
         },
         modules: {
@@ -60,8 +58,11 @@ class Node {
     };
     private protocol: Protocol | undefined;
 
-    constructor(natType: NatType) {
+    constructor(natType: NatType, port?: number) {
         (this.defaults.config as any).relay = Node.getRelayOptions(natType);
+        if (port) {
+            (this.defaults as any).addresses.listen.push(`/ip4/0.0.0.0/tcp/${port}`);
+        }
         if ((this.defaults.config as any).relay.hop.enabled) {
             logger.info('Node acting as relay');
         }
@@ -77,30 +78,7 @@ class Node {
             const advertiseAddrs = this.node.multiaddrs;
             logger.debug('libp2p is advertising the following addresses: ', advertiseAddrs);
 
-            // Add command handler
-            this.node.handle(PROTOCOL, handler);
             this.protocol = new Protocol(this.node);
-            // Set up our input handler
-            process.stdin.on('data', (message) => {
-                // remove the newline
-                message = message.slice(0, -1)
-                // Iterate over all peers, and send messages to peers we are connected to
-                this.node?.peerStore.peers.forEach(async (peerData) => {
-                    // If they dont support the chat protocol, ignore
-                    if (!peerData.protocols.includes(PROTOCOL)) return
-
-                    // If we're not connected, ignore
-                    const connection = this.node?.connectionManager.get(peerData.id)
-                    if (!connection) return
-
-                    try {
-                        const {stream} = await connection.newStream([PROTOCOL])
-                        await send(message, stream)
-                    } catch (err) {
-                        console.error('Could not negotiate chat protocol stream with peer', err)
-                    }
-                })
-            })
 
             const events = new Map<string, any | EventEmitter>([
                 ['peer:connect', this.node.connectionManager],

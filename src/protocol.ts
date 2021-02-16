@@ -5,16 +5,13 @@ import json from 'multiformats/codecs/json'
 import {sha256} from 'multiformats/hashes/sha2'
 import path from 'path';
 import logger from "./logger";
-import PeerId from "peer-id";
-import Multiaddr from "multiaddr";
-import {PROTOCOL} from "./command";
-import {Connection} from 'libp2p/src/dialer';
 import pipe from "it-pipe";
 
 const {publicAddressesFirst} = require('libp2p-utils/src/address-sort');
 // import Connection from 'libp2p'
 
 const protons = require('protons');
+const PROTOCOL = '/libp2p/file/1.0.0'
 
 const {Request} = protons(`
 message Request {
@@ -46,6 +43,7 @@ export class Protocol {
 
     constructor(node: Libp2p) {
         this.node = node;
+        this.node.handle(PROTOCOL, this.handle)
     }
 
     private static async createCid(name: string): Promise<CID> {
@@ -83,49 +81,40 @@ export class Protocol {
         logger.info(`published [${details.cid.toString()}] ${filePath}`);
     }
 
-    async find(name: string): Promise<{ id: PeerId, multiaddrs: Multiaddr[] }[]> {
+    async find(name: string): Promise<any> {
         const cid = await Protocol.createCid(name);
+        console.log(cid);
         logger.info(`searching for [${cid.toString()}]`);
 
-        const arr = [];
+        const arr: any = [];
         // if there are providers, ask them to give details about file
         console.log('trace0')
         // findProviders(CID) throws
         try {
+            // NOTE: This does not work when providers are not stored locally but rather fetched from other peers.
+            // returned data contains only peer id and not the multiaddrs
+            // will fail on `storeAddresses(source, this.libp2p.peerStore)`
             const providers = await this.node?.contentRouting.findProviders(cid);
             console.log('trace1');
+
             // @ts-ignore
             for await(const provider of providers) {
-                arr.push(provider);
-                console.log('trace 2');
                 console.log(provider);
-                const addresses = publicAddressesFirst(provider.multiaddrs.map(a => {
-                    return {multiaddr: a, isCertified: false}
-                }));
-
-                // this.node.connectionManager.start
-                // const connection = this.node.connectionManager.get(provider.id)
-                // if (!connection) return
-
-                try {
-                    const {stream} = await this.node.dialProtocol(addresses[0].multiaddr, [PROTOCOL]);
-                    // const {stream} = await conn.newStream([PROTOCOL]);
-                    try {
-                        await pipe(
-                            [`please provide me details of ${name}`],
-                            stream,
-                            async function (source: any) {
-                                for await (const message of source) {
-                                    console.info(String(message))
-                                }
-                            }
-                        )
-                    } catch (err) {
-                        console.error(err)
+                const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
+                pipe(
+                    // Source data
+                    [`${name}`],
+                    // Write to the stream, and pass its output to the next function
+                    stream,
+                    // Sink function
+                    async function (source: any) {
+                        // For each chunk of data
+                        for await (const data of source) {
+                            // Output the data
+                            console.log('received echo:', data.toString())
+                        }
                     }
-                } catch (err) {
-                    console.error('Could not negotiate chat protocol stream with peer', err)
-                }
+                )
             }
         } catch (e) {
             console.error(e);
@@ -134,9 +123,50 @@ export class Protocol {
         return arr;
     }
 
+    async handle({connection, stream}: ({ connection: any, stream: any })) {
+        try {
+            await pipe(
+                stream,
+                (source: any) => (async function* () {
+                    for await (const message of source) {
+                        console.info(`${connection.remotePeer.toB58String().slice(0, 8)}: ${String(message)}`)
+                    }
+                })(),
+                stream
+            )
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
     async download(provider: any, cid: CID) {
         // download
         // store
         // say to network that I also have this file now
     }
+
+    // async writeReadMessage (stream, msg) {
+    //     const res = await pipe(
+    //         [msg],
+    //         lp.encode(),
+    //         stream,
+    //         lp.decode(),
+    //         /**
+    //          * @param {AsyncIterable<Uint8Array>} source
+    //          */
+    //         async source => {
+    //             const buf = await first(source)
+    //
+    //             if (buf) {
+    //                 return buf.slice()
+    //             }
+    //         }
+    //     )
+    //
+    //     if (res.length === 0) {
+    //         throw errcode(new Error('No message received'), 'ERR_NO_MESSAGE_RECEIVED')
+    //     }
+    //
+    //     return Message.deserialize(res)
+    // }
 }
