@@ -7,7 +7,6 @@ import {NatType} from "./nat";
 import {NOISE} from "libp2p-noise";
 import Bootstrap from "libp2p-bootstrap";
 import Gossipsub from "libp2p-gossipsub";
-import {Builder} from "builder-pattern";
 
 const PubsubPeerDiscovery = require('libp2p-pubsub-peer-discovery')
 
@@ -18,6 +17,7 @@ const MulticastDNS = require('libp2p-mdns');
 
 export interface ConfigBuilder {
     alias?: string;
+    peer?: PeerId;
     nodePort: number;
     gatewayPort: number;
     filePath: string;
@@ -54,7 +54,7 @@ interface Gateway {
 }
 
 export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Promise<Config> => {
-    const fileConfig: FileConfig = await from(Builder(defaultConfigBuilder).alias("local").build());
+    const fileConfig: FileConfig = await from(builder);
     const libp2pConfig = {
         peerId: fileConfig.peer,
         addresses: {
@@ -118,6 +118,12 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
 const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
     const configFilePath = fsPath.join(__dirname, '..', builder.filePath);
     const config: FileConfig = loadFile(configFilePath);
+    config.configFilePath = builder.filePath;
+    config.network.port = builder.nodePort;
+    config.gateway.port = builder.gatewayPort;
+    config.alias = builder.alias || config.alias;
+    config.peer = builder.peer || config.peer;
+
     const [generated, peer] = await generatePeer(config.peer);
     config.peer = await PeerId.createFromJSON(JSON.parse(JSON.stringify(peer)));
     if (generated) {

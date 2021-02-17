@@ -1,27 +1,42 @@
 import {Builder} from "builder-pattern";
 import {defaultConfigBuilder, libp2pConfig} from "./config";
-import logger from "./logger";
 import {discover} from "./nat";
 import {Node} from './node';
 import {run as gateway} from "./gateway";
 
+const main = async (single: boolean) => {
+    if (single) {
+        await singleNode();
+    } else {
+        await multiple(3);
+    }
+};
 
-const stop = (node: Node) => async () => {
-    await node.stop();
-    logger.info('Stopping...');
-    process.exit(0);
+/**
+ * Run N nodes
+ */
+const multiple = async (n: number) => {
+    const natType = await discover();
+    for await (const nodeIndex of Array(n).keys()) {
+        const config = await libp2pConfig(Builder(defaultConfigBuilder)
+            .alias(`local-${nodeIndex}`)
+            .nodePort(8000 + nodeIndex)
+            .gatewayPort(3000 + nodeIndex)
+            .filePath(`./config/config.${nodeIndex}.json`)
+            .build(), natType);
+        const node = await Node.run(config);
+        gateway(node);
+    }
 }
 
-const main = async () => {
+const singleNode = async () => {
     const natType = await discover();
     const config = await libp2pConfig(Builder(defaultConfigBuilder).alias("local").build(), natType);
 
     const node = await Node.run(config);
     gateway(node);
-    process.on('SIGTERM', stop(node));
-    process.on('SIGINT', stop(node));
-};
+}
 
 (async () => {
-    await main();
+    await main(!!process.env.SINGLE || false);
 })();

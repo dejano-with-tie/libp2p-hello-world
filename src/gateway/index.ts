@@ -5,16 +5,6 @@ import bodyParser from "body-parser";
 import logger from "../logger";
 import routers from './routes';
 
-const app: express.Application = express();
-
-app.use(cors());
-
-app.use(require('morgan')('dev'));
-app.use(bodyParser.urlencoded({extended: false}));
-app.use(bodyParser.json());
-
-app.use(express.static(__dirname + '/public'));
-
 const context = (node: Node) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
     res.locals.node = node;
     next();
@@ -40,11 +30,27 @@ const errHandle = (err: { stack: any; status: any; message: any; }, req: any, re
     });
 };
 
-export const run = (node: Node) => {
-    app.use(context(node));
+function configure(app: express.Application) {
+    app.use(cors());
+
+    app.use(require('morgan')('dev'));
+    app.use(bodyParser.urlencoded({extended: false}));
+    app.use(bodyParser.json());
+
+    app.use(express.static(__dirname + '/public'));
+
     app.use(routers);
     app.use(handle404);
     app.use(errHandle);
+}
+
+export const run = (node: Node) => {
+    const app: express.Application = express();
+
+    app.use(context(node));
+
+    configure(app);
+
 
     app.listen(node.config.file.gateway.port, () => {
         logger.info(`API Gateway available at http://localhost:${node.config.file.gateway.port}`);
