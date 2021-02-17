@@ -38,5 +38,6 @@ const singleNode = async () => {
 }
 
 (async () => {
-    await main(!!process.env.SINGLE || false);
+    // await main(!!process.env.SINGLE || false);
+    await main(true);
 })();

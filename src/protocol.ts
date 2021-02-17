@@ -44,7 +44,6 @@ export class Protocol {
     private node: Libp2p;
     private shared = new Map<CID, any>();
 
-
     constructor(node: Libp2p) {
         this.node = node;
         this.node.handle(PROTOCOL, this.handle)
