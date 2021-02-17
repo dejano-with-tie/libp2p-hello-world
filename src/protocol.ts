@@ -21,7 +21,7 @@ const {Request} = protons(`
 message Request {
   enum Type {
     PUBLISH = 1;
-    FIND = 2;
+    GET = 2;
   }
   
   required Type type = 1;
@@ -132,6 +132,8 @@ export class Protocol {
                 if (response.length === 0) {
                     throw errcode(new Error('No message received'), 'ERR_NO_MESSAGE_RECEIVED')
                 }
+
+                logger.debug(String(response));
             }
         } catch (e) {
             console.error(e);

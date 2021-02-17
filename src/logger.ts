@@ -1,5 +1,6 @@
 import winston from "winston";
 import {Format} from "logform";
+import {isProd} from "./util";
 
 const formats: Format[] = [
     winston.format.simple(),
@@ -26,7 +27,7 @@ const logger = winston.createLogger({
 // If we're not in production then log to the `console` with the format:
 // `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
 //
-if (process.env.NODE_ENV !== 'production') {
+if (!isProd()) {
     logger.add(new winston.transports.Console({
         format: winston.format.combine(winston.format.combine(...formats)),
     }));
