@@ -18,6 +18,7 @@ const MulticastDNS = require('libp2p-mdns');
 export interface ConfigBuilder {
     alias?: string;
     peer?: PeerId;
+    db?: string;
     nodePort: number;
     gatewayPort: number;
     filePath: string;
@@ -37,6 +38,7 @@ export interface Config {
 
 export interface FileConfig {
     alias: string;
+    db: string;
     peer: PeerId;
     network: Network;
     gateway: Gateway;
@@ -122,6 +124,7 @@ const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
     config.network.port = builder.nodePort;
     config.gateway.port = builder.gatewayPort;
     config.alias = builder.alias || config.alias;
+    config.db = builder.db || config.db;
     config.peer = builder.peer || config.peer;
 
     const [generated, peer] = await generatePeer(config.peer);

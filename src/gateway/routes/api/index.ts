@@ -1,6 +1,7 @@
 import express, {Router} from 'express';
 import fileRoutes from './file.api';
-import db from '../../../models';
+import File from "../../../models/file.model";
+import Published from "../../../models/published.model";
 
 const router = Router();
 
@@ -24,13 +25,17 @@ router.get('/whoami', (req: express.Request, res: express.Response) => {
 
 // TODO: Temp
 async function health(req: express.Request, res: express.Response, next: express.NextFunction) {
-    const file = await db.File.create({
+    const file = await File.create({
         path: '/tmp/omg',
         size: 123,
         mime: 'log',
         hash: 'temp',
     });
-    res.send(file);
+    const pub = await new Published({cid: '123', value: 'this is hashed value', fileId: file.id});
+    pub.save();
+
+    const files = await File.findAll({include: [Published]});
+    res.send(files);
 }
 
 router.get('/health', errHandler(health));

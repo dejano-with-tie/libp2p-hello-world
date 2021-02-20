@@ -1,35 +1,31 @@
-import {DataTypes, Model, Sequelize} from 'sequelize';
+import {AllowNull, BelongsTo, Column, ForeignKey, Model, PrimaryKey, Table, Unique} from 'sequelize-typescript';
+import File from "./file.model";
 
-class Published extends Model {
+@Table({
+    timestamps: true
+})
+export default class Published extends Model {
 
-    static model = (sequelize: Sequelize) => {
-        return Published.init({
-                cid: {
-                    allowNull: false,
-                    primaryKey: true,
-                    type: DataTypes.STRING
-                },
-                value: {
-                    allowNull: false,
-                    unique: true,
-                    type: DataTypes.STRING
-                },
-            },
-            {
-                sequelize,
-                modelName: 'Published', timestamps: true, tableName: 'published', underscored: true
-            }
-        );
-    }
+    @PrimaryKey
+    @AllowNull(false)
+    @Column
+        // @ts-ignore
+    cid: string;
 
-    static associate = (sequelize: Sequelize) => {
-        Published.belongsTo(sequelize.models.File, {
-            onDelete: 'CASCADE',
-            foreignKey: {
-                allowNull: false
-            }
-        })
-    }
+    @AllowNull(false)
+    @Unique
+    @Column
+        // @ts-ignore
+    value: string;
+
+
+    @ForeignKey(() => File)
+    @AllowNull(false)
+    @Column
+        // @ts-ignore
+    fileId: number
+
+    @BelongsTo(() => File)
+        // @ts-ignore
+    file: File
 }
-
-export default Published;

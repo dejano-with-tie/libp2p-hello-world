@@ -1,46 +1,41 @@
-import {DataTypes, Model, Sequelize} from 'sequelize';
+import {AllowNull, AutoIncrement, Column, HasMany, Model, PrimaryKey, Table, Unique} from 'sequelize-typescript';
+import Published from "./published.model";
 
-// TODO: Missing props, investigate how to do this properly
-class File extends Model {
+@Table({
+    timestamps: true
+})
+export default class File extends Model {
 
-    static model = (sequelize: Sequelize) => {
-        return File.init({
-                id: {
-                    allowNull: false,
-                    autoIncrement: true,
-                    primaryKey: true,
-                    type: DataTypes.BIGINT
-                },
-                path: {
-                    allowNull: false,
-                    unique: true,
-                    type: DataTypes.STRING
-                },
-                size: {
-                    type: DataTypes.BIGINT,
-                    allowNull: false,
-                },
-                mime: {
-                    type: DataTypes.STRING,
-                    allowNull: false,
-                },
-                hash: {
-                    type: DataTypes.STRING,
-                    allowNull: false,
-                }
-            },
-            {
-                sequelize,
-                modelName: 'File', timestamps: true, tableName: 'file', underscored: true
-            }
-        );
-    }
+    @AutoIncrement
+    @PrimaryKey
+    @Column
+        // @ts-ignore
+    id: bigint
 
-    static associate = (sequelize: Sequelize) => {
-        File.hasMany(sequelize.models.Published, {
-            foreignKey: 'file_id'
-        })
-    }
+
+    @Unique
+    @AllowNull(false)
+    @Column({})
+        // @ts-ignore
+    path: string
+
+    @AllowNull(false)
+    @Column
+        // @ts-ignore
+    size: bigint
+
+    @AllowNull(false)
+    @Column
+        // @ts-ignore
+    mime: string
+
+    @AllowNull(false)
+    @Column
+        // @ts-ignore
+    hash: string
+
+    @HasMany(() => Published)
+        // @ts-ignore
+    published: Published[]
+
 }
-
-export default File;

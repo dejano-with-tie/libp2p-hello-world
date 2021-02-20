@@ -94,3 +94,4 @@ lib
 *.js
 config/*.json
 tmp
+*.sqlite
