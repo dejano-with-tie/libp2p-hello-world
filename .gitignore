@@ -93,5 +93,6 @@ Thumbs.db
 lib
 *.js
 config/*.json
+!config/config.json
 tmp
 *.sqlite
