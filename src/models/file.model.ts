@@ -12,7 +12,6 @@ export default class File extends Model {
         // @ts-ignore
     id: bigint
 
-
     @Unique
     @AllowNull(false)
     @Column({})

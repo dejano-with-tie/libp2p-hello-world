@@ -49,11 +49,11 @@ class Node {
     }
 
     async publish(filePath: string): Promise<void> {
-        await this.protocol?.publish(filePath);
+        await this.protocol.publish(filePath);
     }
 
     async find(name: string): Promise<{ id: PeerId; multiaddrs: Multiaddr[] }[] | undefined> {
-        return this.protocol?.find(name);
+        return this.protocol.find(name);
     }
 
     public whoAmI() {

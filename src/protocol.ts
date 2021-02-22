@@ -2,11 +2,14 @@ import * as fs from 'fs';
 import Libp2p from "libp2p";
 import CID from "cids";
 import json from 'multiformats/codecs/json'
+import raw from 'multiformats/codecs/raw'
 import {sha256} from 'multiformats/hashes/sha2'
 import path from 'path';
 import logger from "./logger";
 import pipe from "it-pipe";
 import first from 'it-first';
+import File from "./models/file.model";
+import Published from "./models/published.model";
 
 const errcode = require('err-code');
 // import errorcode from 'err';
@@ -49,10 +52,10 @@ export class Protocol {
         this.node.handle(PROTOCOL, this.handle)
     }
 
-    private static async createCid(name: string): Promise<CID> {
+    private static async createCidsFromName(name: string): Promise<CID[]> {
         const bytes = json.encode({name: name});
         const hash = await sha256.digest(bytes);
-        return new CID(1, json.code, hash.bytes);
+        return [new CID(1, json.code, hash.bytes)];
     }
 
     private static async details(filePath: string) {
@@ -61,31 +64,67 @@ export class Protocol {
             throw new Error(`Only files are shareable. ${filePath} is not a file`);
         }
 
+        const content = fs.readFileSync(filePath);
+
         const extName = path.extname(filePath);
         const name = path.basename(filePath, extName);
-        const cid = await Protocol.createCid(name);
+        const [cid] = await Protocol.createCidsFromName(name);
+
+        const bytes = raw.encode(content);
+        const hash = await sha256.digest(bytes);
+        const fileHash = new CID(1, raw.code, hash.bytes,);
+
         return {
             size: stat.size,
             cid,
             path: filePath,
             extName,
             name,
+            fileHash
         }
     }
 
     async publish(filePath: string) {
         if (!fs.existsSync(filePath)) {
-            throw new Error(`File ${filePath} does not exist`);
+            throw errcode(Error(`File ${filePath} does not exist`), 'FILE_DOES_NOT_EXIST');
         }
         const details = await Protocol.details(filePath);
+        const existing = await File.findOne({
+            limit: 1, where: {
+                // @ts-ignore
+                hash: details.fileHash.toString()
+            }
+        });
+        console.info(`existing: ${existing}`);
+        if (existing != null) {
+            throw errcode(Error(`File ${filePath} with identical content already published`), 'FILE_ALREADY_PUBLISHED');
+        }
 
-        this.shared.set(details.cid, details);
+        const existingByPath = await File.findOne({
+            limit: 1, where: {
+                // @ts-ignore
+                path: details.path
+            }
+        });
+        console.info(`existing: ${existing}`);
+        if (existingByPath != null) {
+            throw errcode(Error(`File ${filePath} with different content but same path already published`), 'FILE_ALREADY_PUBLISHED');
+        }
+
+        const file = await File.create({
+            path: details.path,
+            size: details.size,
+            mime: 'TODO',
+            hash: details.fileHash.toString(),
+        });
+        const _pub = Published.create({cid: details.cid.toString(), value: details.name, fileId: file.id});
+
         await this.node.contentRouting.provide(details.cid);
         logger.info(`published [${details.cid.toString()}] ${filePath}`);
     }
 
     async find(name: string): Promise<any> {
-        const cid = await Protocol.createCid(name);
+        const [cid] = await Protocol.createCidsFromName(name);
         console.log(cid);
         logger.info(`searching for [${cid.toString()}]`);
 

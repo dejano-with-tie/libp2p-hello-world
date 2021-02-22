@@ -51,7 +51,6 @@ export const run = (node: Node) => {
 
     configure(app);
 
-
     app.listen(node.config.file.gateway.port, () => {
         logger.info(`API Gateway available at http://localhost:${node.config.file.gateway.port}`);
     });

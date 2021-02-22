@@ -13,7 +13,8 @@ export class Db {
     }
 
     async createAndConnect() {
-        await this.sequelize.sync({force: !isProd()});
+        // await this.sequelize.sync({force: !isProd()});
+        await this.sequelize.sync({force: false});
         await this.sequelize.authenticate();
     }
 }

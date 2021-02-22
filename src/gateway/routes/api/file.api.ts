@@ -3,11 +3,6 @@ import logger from "../../../logger";
 
 const router = Router();
 
-// Preload user profile on routes with ':username'
-router.param('username', function (req, res, next, username) {
-    // ...
-});
-
 router.get('/publish/:path', async (req: express.Request, res: express.Response) => {
     const path = req.params['path'];
 
@@ -19,7 +14,7 @@ router.get('/publish/:path', async (req: express.Request, res: express.Response)
         return;
     } catch (e) {
         res.status(400).send({
-            message: `failed to publish ${path}`
+            message: e.toString()
         });
         logger.error(e.toString());
     }
