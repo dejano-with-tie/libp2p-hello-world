@@ -1,18 +1,14 @@
 {
-  "alias": "local",
-  "db": "sqlite:./data.sqlite",
-  "peer": {
-    "id": "QmWLShkyvsu4MKL28VHoLzR5fr1u8sz6YJEo91T9Tv2vnC",
-    "privKey": "CAASqAkwggSkAgEAAoIBAQDCy+01jm2ePXu3tS8E/O8a1SAvkojmF1DzfV9Fg4a3CtYPpEu/BEVR68d1L9TXaq8udDkBk4XTwsAIWYSh8URYz6cfVg62lg9xSTqgeFqAT9y2sTmaWxjGhyDiNOxsABOGe/7sfwIVkEoMk/c0WmXDMDFyp2RZz1lI+oqgFvK1kep4qolH+HQ3Q9qDsHH9corLRjak8hMxs1ojGK6K0YBYvoLLtbKKUG/gW0jriWZqP4kJnJgDqlLRg88DsBiaXrCU9GZu8hjHTg8roN6V+JQSvLunUgPbmCPQBnaESzleFa33531YucbX939woSffkHV6c3a5frz+8V9xwusJcimfAgMBAAECggEABnDlxAqUl1HjIFzuVBTk9xcq/Ee1HR6SP6ralprVvoGuOFAvbP6AKEhKjRZqzECr0DZpmCK/nxPmc6A6IXyvzNv447FdxS3LDuzj8mBoZau+WZAcnnz6ob3gGXq0gpGyE5VQBZPhhsMBn87YsrN2f/C9AdSFHe8cPayDHu4DUnuU3x5Tkw6V1XHZmGvvX1asWGc+oDugfUaWKg4oeL5JiIySNe02m4WBVESOx1wHh/kUP692JtetcrRfNGHG3nOKs4i67AlGwB8nuRvOAFxwXyUCsnvutjdRh7HuCGVbsFfuVjVDzbUjPSjOPOQJdGAn2Hz9LfjgC3QX4cunVFZBiQKBgQDuxWn6aH+ee40wfHdKp5rkN7W2TXpgKToSawFg2PTjPDBtbBoSrGRPMeGrR9oLh5XP5ZZplKpxBpGd2hIklv5C1oKllwLdmhr1CX/69Rtb27EDCKKD+AH0aCTjufBIjjtlNqy43/ypndLDOj9HAPFbDfkTr4bFEUBefUgfNhHozQKBgQDQ2jarxVhcSUcFbuI66dxp2HxqMaJhDvZVdxQNNE/hpknylTEAxPuAwK5qu5IwPPb1LnRNleLniUitlqiORXvvrydkXvCsii78VPuLmQPhq7f7Tt6c0JAwtCR4aF/kcWOYet4l0ZVtSbtt7KIaeJkrmHGvH3Z9YgnrlehpTTkMGwKBgQC7BJ2RqS/sblGUXKkDLGxBvPDzLZRgpWn66x1VQhntskMsMbPqVGTtMuDTS6AZz8Uj5Wv+npcxmDeOMDRtvGbC60nBcZqo//+FVj+LzVf0hwsKmUTRoPvG95uNUyJFckJLcJuw4qAAKsHecE0HzFE/RJ6HMMCasnx8hhxrdeppMQKBgQC1WBRKd9NuZm4ViJ9E+lTZTxFQgAJ3di9sLDYr9PU7gFELIoHnIiMjO6r2oCGiYv0oDQsNZw0bb/e8SmnXBvxDNPnmTA18M4vyq7OzFczqAVmCC4x96xaYQ4K7Th2dVNtexajoe5/cwj3Nh7+FbpvI39gucApJenwUpBimflf/awKBgCk+OA1J2gxWtFCg+k280ecTMWcwvrgZQz4psuQtNcQe6idhWNJ5xAFEQncnVoPqJ3z0C0Pv4EroYaytZBenDaFc7X3DEnZRpIBgMdl6PkOW0q4nkeghU3QM7RasLCVfoP+cAmI3UKQ0IIGXAyC06SKX95+mu5HhD/hufGRmy3C9",
-    "pubKey": "CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDCy+01jm2ePXu3tS8E/O8a1SAvkojmF1DzfV9Fg4a3CtYPpEu/BEVR68d1L9TXaq8udDkBk4XTwsAIWYSh8URYz6cfVg62lg9xSTqgeFqAT9y2sTmaWxjGhyDiNOxsABOGe/7sfwIVkEoMk/c0WmXDMDFyp2RZz1lI+oqgFvK1kep4qolH+HQ3Q9qDsHH9corLRjak8hMxs1ojGK6K0YBYvoLLtbKKUG/gW0jriWZqP4kJnJgDqlLRg88DsBiaXrCU9GZu8hjHTg8roN6V+JQSvLunUgPbmCPQBnaESzleFa33531YucbX939woSffkHV6c3a5frz+8V9xwusJcimfAgMBAAE="
-  },
-  "network": {
-    "bootstrapPeers": [
-      "/ip4/54.175.90.157/tcp/8000/ipfs/QmWjz6xb8v9K4KnYEwP5Yk75k5mMBCehzWFLCvvQpYxF3d"
-    ],
-    "port": 8000
-  },
-  "gateway": {
-    "port": 3000
-  }
+    "alias": "local",
+    "db": "sqlite:./data.sqlite",
+    "network": {
+        "bootstrapPeers": [
+            "/ip4/18.211.111.71/tcp/8000/ipfs/QmWLShkyvsu4MKL28VHoLzR5fr1u8sz6YJEo91T9Tv2vnC"
+        ],
+        "port": 8000
+    },
+    "gateway": {
+        "port": 3000
+    },
+    "configFilePath": "./config/config.json"
 }
