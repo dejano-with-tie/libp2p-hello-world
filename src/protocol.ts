@@ -10,6 +10,7 @@ import pipe from "it-pipe";
 import first from 'it-first';
 import File from "./models/file.model";
 import Published from "./models/published.model";
+import {createFromCID} from "peer-id";
 
 const errcode = require('err-code');
 // import errorcode from 'err';
@@ -117,7 +118,7 @@ export class Protocol {
             mime: 'TODO',
             hash: details.fileHash.toString(),
         });
-        const _pub = Published.create({cid: details.cid.toString(), value: details.name, fileId: file.id});
+        await Published.create({cid: details.cid.toString(), value: details.name, fileId: file.id});
 
         await this.node.contentRouting.provide(details.cid);
         logger.info(`published [${details.cid.toString()}] ${filePath}`);
@@ -129,6 +130,16 @@ export class Protocol {
         logger.info(`searching for [${cid.toString()}]`);
 
         const arr: any = [];
+
+        const local = await Published.findOne({
+            include: [File], limit: 1, where: {
+                // @ts-ignore
+                cid: cid.toString()
+            }
+        });
+        if (local != null) {
+            arr.push(local.file);
+        }
         // if there are providers, ask them to give details about file
         console.log('trace0')
         // findProviders(CID) throws
@@ -141,6 +152,12 @@ export class Protocol {
 
             // @ts-ignore
             for await(const provider of providers) {
+                if (provider.id.equals(this.node.peerId)) {
+                    logger.debug(`I have '${name}'!`);
+
+                    // arr.push(File.find)
+                    continue;
+                }
                 console.log(provider);
                 const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
                 const response = await pipe(
@@ -172,6 +189,7 @@ export class Protocol {
                 }
 
                 logger.debug(String(response));
+                arr.push(response);
             }
         } catch (e) {
             console.error(e);
@@ -187,7 +205,23 @@ export class Protocol {
                 (source: any) => (async function* () {
                     for await (const message of source) {
                         console.info(`[RECV] ${connection.remotePeer.toB58String().slice(0, 8)}: ${String(message)}`)
-                        yield `allright, received '${message}' and returning this`;
+                        // createFromCID()
+                        const [cid] = await Protocol.createCidsFromName(String(message));
+                        console.log(cid);
+                        logger.info(`searching for [${cid.toString()}]`);
+
+                        const local = await Published.findOne({
+                            include: [File], limit: 1, where: {
+                                // @ts-ignore
+                                cid: cid.toString()
+                            }
+                        });
+                        // TODO: Validate that file still exists locally
+                        if (local != null) {
+                            yield JSON.stringify([local.file]);
+                        } else {
+                            yield JSON.stringify([])
+                        }
                     }
                 })(),
                 stream
