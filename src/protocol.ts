@@ -129,7 +129,7 @@ export class Protocol {
         console.log(cid);
         logger.info(`searching for [${cid.toString()}]`);
 
-        const arr: any = [];
+        let arr: any = [];
 
         const local = await Published.findOne({
             include: [File], limit: 1, where: {
@@ -189,7 +189,7 @@ export class Protocol {
                 }
 
                 logger.debug(String(response));
-                arr.push(response);
+                arr.push(...response);
             }
         } catch (e) {
             console.error(e);
