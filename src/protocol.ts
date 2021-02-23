@@ -10,7 +10,6 @@ import pipe from "it-pipe";
 import first from 'it-first';
 import File from "./models/file.model";
 import Published from "./models/published.model";
-import {createFromCID} from "peer-id";
 
 const errcode = require('err-code');
 // import errorcode from 'err';
@@ -129,7 +128,7 @@ export class Protocol {
         console.log(cid);
         logger.info(`searching for [${cid.toString()}]`);
 
-        let arr: any = [];
+        const arr: any = [];
 
         const local = await Published.findOne({
             include: [File], limit: 1, where: {
@@ -152,6 +151,8 @@ export class Protocol {
 
             // @ts-ignore
             for await(const provider of providers) {
+                console.log(`provider: ${provider}`)
+                // is local
                 if (provider.id.equals(this.node.peerId)) {
                     logger.debug(`I have '${name}'!`);
 
@@ -168,20 +169,10 @@ export class Protocol {
                     // Sink function
                     async (source: any) => {
                         const buf: any = await first(source)
-
                         if (buf) {
                             return buf.slice()
                         }
                     }
-
-
-                    // async function (source: any) {
-                    //     // For each chunk of data
-                    //     for await (const data of source) {
-                    //         // Output the data
-                    //         console.log('received echo:', data.toString())
-                    //     }
-                    // }
                 )
 
                 if (response.length === 0) {
@@ -189,7 +180,11 @@ export class Protocol {
                 }
 
                 logger.debug(String(response));
-                arr.push(...response);
+                const responseParsed = JSON.parse(String(response));
+                if (responseParsed.length > 0) {
+                    const withProvider = {provider, ...responseParsed};
+                    arr.push(withProvider);
+                }
             }
         } catch (e) {
             console.error(e);
@@ -216,12 +211,17 @@ export class Protocol {
                                 cid: cid.toString()
                             }
                         });
-                        // TODO: Validate that file still exists locally
-                        if (local != null) {
-                            yield JSON.stringify([local.file]);
-                        } else {
-                            yield JSON.stringify([])
+                        if (local === null) {
+                            yield null;
+                            continue;
                         }
+
+                        if (!fs.existsSync(local.file.path)) {
+                            // TODO: Update db
+                            continue;
+                        }
+
+                        yield JSON.stringify(local.file);
                     }
                 })(),
                 stream
