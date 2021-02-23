@@ -5,16 +5,22 @@ import Multiaddr from "multiaddr";
 import EventEmitter from 'events';
 import {Protocol} from './protocol';
 import {Config} from "./config";
+import Published from "./models/published.model";
+import CID from "cids";
+import util from 'util';
+
+const sleep = util.promisify(setTimeout);
 
 class Node {
     public eventEmitter: EventEmitter = new EventEmitter();
     // @ts-ignore
     public libp2p: Libp2p;
+    public readonly config: Config;
     // @ts-ignore
     private protocol: Protocol;
-    public readonly config: Config;
 
     private constructor(config: Config) {
+
         this.config = config;
         logger.debug(`Creating node with config: ${JSON.stringify(this.config, null, 4)}`);
         if (this.config.libp2p.config?.relay?.hop.enabled) {
@@ -25,7 +31,8 @@ class Node {
     public static run = async (config: Config): Promise<Node> => {
         const node = new Node(config);
         node.libp2p = await Libp2p.create(node.config.libp2p);
-        await node.libp2p.start();
+        await node.start();
+
 
         node.protocol = new Protocol(node.libp2p);
         logger.info(`Node ID: ${node.libp2p.peerId.toB58String()}`);
@@ -44,20 +51,24 @@ class Node {
         return node;
     }
 
-    async stop() {
+    public async stop() {
         await this.libp2p.stop();
     }
 
-    async publish(filePath: string): Promise<void> {
+    public async publish(filePath: string): Promise<void> {
         await this.protocol.publish(filePath);
     }
 
-    async find(name: string): Promise<{ id: PeerId; multiaddrs: Multiaddr[] }[] | undefined> {
-        return this.protocol.find(name);
+    public async find(name: string): Promise<{ id: PeerId; multiaddrs: Multiaddr[] }[] | undefined> {
+        return await this.protocol.find(name);
     }
 
     public whoAmI() {
         return this.libp2p.peerId;
+    }
+
+    public async download(provider: string, fileId: number) {
+        return await this.protocol.download(PeerId.createFromB58String(provider), fileId);
     }
 
     /**
@@ -89,7 +100,21 @@ class Node {
             })
         });
     }
+
+    private async start() {
+        await this.libp2p.start();
+        // rebroadcast files
+        setTimeout(() => {
+            (async () => {
+                for (const published of (await Published.findAll())) {
+                    await this.libp2p.contentRouting.provide(new CID(published.cid));
+                    logger.info(`published [${JSON.stringify(published)}]`);
+                }
+            })();
+        }, 10 * 1000);
+    }
 }
+
 
 export {
     Node

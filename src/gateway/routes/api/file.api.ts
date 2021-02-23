@@ -1,40 +1,42 @@
 import express, {Router} from 'express';
 import logger from "../../../logger";
 
+// We create a wrapper to workaround async errors not being transmitted correctly.
+export const catchAsync = (handler: ((req: express.Request, res: express.Response, next: express.NextFunction) => Promise<any>)) => {
+    return async function (req: express.Request, res: express.Response, next: express.NextFunction) {
+        try {
+            await handler(req, res, next);
+        } catch (error) {
+            next(error);
+        }
+    };
+}
+
 const router = Router();
 
-router.get('/publish/:path', async (req: express.Request, res: express.Response) => {
+async function publish(req: express.Request, res: express.Response, next: any) {
     const path = req.params['path'];
+    await res.locals.node.publish(path);
+    res.status(200).send({
+        message: `published ${path}`
+    });
+}
 
-    try {
-        await res.locals.node.publish(path);
-        res.status(200).send({
-            message: `published ${path}`
-        });
-        return;
-    } catch (e) {
-        res.status(400).send({
-            message: e.toString()
-        });
-        logger.error(e.toString());
-    }
-});
+async function find(req: express.Request, res: express.Response) {
+    const providers = await res.locals.node.find(req.params['name']);
+    logger.info(providers);
+    res.send(providers);
+}
 
-router.get('/find/:name', async (req: express.Request, res: express.Response) => {
-    const name = req.params['name'];
-    try {
-        const providers = await res.locals.node.find(name);
-        logger.info(providers);
-        res.send(providers);
-    } catch (e) {
-        res.status(404).send({
-            message: `No one has ${name}`
-        });
-        logger.error(e.toString());
-    }
-});
 
-router.get('/events', async (req: express.Request, res: express.Response) => {
+async function download(req: express.Request, res: express.Response) {
+    // TODO: by file id
+    const providers = await res.locals.node.download(req.params['provider'], req.params['fileId']);
+    logger.info(providers);
+    res.send(providers);
+}
+
+async function events(req: express.Request, res: express.Response) {
     console.log('Got /events');
     res.set({
         'Cache-Control': 'no-cache',
@@ -49,6 +51,10 @@ router.get('/events', async (req: express.Request, res: express.Response) => {
     res.locals.node.eventEmitter.on('app:event', (details: any) => {
         res.write(`data: ${JSON.stringify(details)}\n\n`);
     })
-})
+}
 
+router.get('/download/:fileId/:provider', catchAsync(download));
+router.get('/events', catchAsync(events));
+router.get('/find/:name', catchAsync(find));
+router.get('/publish/:path', catchAsync(publish));
 export default router;

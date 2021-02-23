@@ -1,3 +1,4 @@
+import * as strm from 'stream';
 import * as fs from 'fs';
 import Libp2p from "libp2p";
 import CID from "cids";
@@ -10,6 +11,12 @@ import pipe from "it-pipe";
 import first from 'it-first';
 import File from "./models/file.model";
 import Published from "./models/published.model";
+import PeerId from "peer-id";
+import * as util from "util";
+import MuxedStream from 'libp2p';
+import lp, {int32BEDecode, int32BEEncode, varintDecode} from 'it-length-prefixed';
+import fileSize from "filesize";
+
 
 const errcode = require('err-code');
 // import errorcode from 'err';
@@ -45,11 +52,10 @@ message SearchForFile {
 
 export class Protocol {
     private node: Libp2p;
-    private shared = new Map<CID, any>();
 
     constructor(node: Libp2p) {
         this.node = node;
-        this.node.handle(PROTOCOL, this.handle)
+        this.node.handle(PROTOCOL, this.sendFile)
     }
 
     private static async createCidsFromName(name: string): Promise<CID[]> {
@@ -181,7 +187,7 @@ export class Protocol {
 
                 logger.debug(String(response));
                 const responseParsed = JSON.parse(String(response));
-                if (responseParsed.length > 0) {
+                if (responseParsed) {
                     const withProvider = {provider, ...responseParsed};
                     arr.push(withProvider);
                 }
@@ -231,7 +237,87 @@ export class Protocol {
         }
     }
 
-    async download(provider: any, cid: CID) {
+    static async* fileData() {
+        // for (let i = 0; i < 17 / 2; i++) {
+        //     // 1mb
+        //     yield Buffer.alloc(1000000)
+        // }
+        const readStream = fs.createReadStream('/home/dejano/Projects/libp2p-hello-world/output.300mb.dat');
+        // const readStream = fs.ReadStream.from(['test', '123', 'this should be long', 'short'])
+        for await (const chunk of readStream) {
+            yield chunk;
+        }
+    }
+
+    static echo(length: boolean) {
+        return async function* (source: any) {
+            for await (const message of source) {
+                if (length) {
+                    const len = varintDecode(message);
+                    // console.log(`Chunk length: ${fileSize(len)}`); // THIS IS SIZE
+                }
+                // console.log(`${message.slice()}`);
+                yield message;
+            }
+        }
+    }
+
+
+    async sendFile({connection, stream}: ({ connection: any, stream: MuxedStream })) {
+        // stream.Readable.from()
+        // let data: any[] = [];
+
+//         readStream.on('data', function(chunk) {
+//             data.push(chunk);
+//             console.log(chunk);// your processing chunk logic will go here
+//
+//         }).on('end', function() {
+//             console.log('###################');
+// // here you see all data processed at end of file
+//         });
+        // readStream.read
+        try {
+            await pipe(
+                Protocol.fileData(),
+                // lp.encode({lengthEncoder: int32BEEncode}),
+                lp.encode(),
+                Protocol.echo(true),
+                // Encode with length prefix (so receiving side knows how much data is coming)
+                stream,
+            )
+        } catch (err) {
+            console.error(err)
+        }
+        console.log('wrote everything');
+    }
+
+    async download(provider: PeerId, fileId: number) {
+        const out = fs.createWriteStream('download.data');
+        try {
+            const {stream} = await this.node?.dialProtocol(provider, PROTOCOL);
+            await pipe(
+                [fileId],
+                stream,
+                // lp.decode({lengthDecoder: int32BEDecode}),
+                lp.decode(),
+                async function save(source: any) {
+                    for await (const message of source) {
+                        await out.write(message.slice()); // (.slice converts BufferList to Buffer)
+                        // console.log('saved');
+                    }
+                }
+                // Decode length-prefixed data
+                // lp.decode(),
+                // out
+            )
+        } catch (e) {
+            console.error(e);
+        }
+        console.log('done1');
+        //
+        // read.pipe(out);
+
+
         // download
         // store
         // say to network that I also have this file now
