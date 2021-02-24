@@ -1,6 +1,6 @@
-import * as strm from 'stream';
 import * as fs from 'fs';
 import Libp2p from "libp2p";
+import MuxedStream from "libp2p";
 import CID from "cids";
 import json from 'multiformats/codecs/json'
 import raw from 'multiformats/codecs/raw'
@@ -9,14 +9,33 @@ import path from 'path';
 import logger from "./logger";
 import pipe from "it-pipe";
 import first from 'it-first';
-import File from "./models/file.model";
-import Published from "./models/published.model";
 import PeerId from "peer-id";
-import * as util from "util";
-import MuxedStream from 'libp2p';
-import lp, {int32BEDecode, int32BEEncode, varintDecode} from 'it-length-prefixed';
-import fileSize from "filesize";
+import lp, {varintDecode} from 'it-length-prefixed';
+import {Db} from "./models";
+import Multiaddr from "multiaddr";
+import File from "./models/file.model";
 
+interface Provider {
+    isLocal: boolean;
+    multiaddrs: Multiaddr[];
+    id: ({ id: string, pubKey: string });
+}
+
+interface Location {
+    provider: Provider;
+    fileId: number;
+    path: string;
+
+}
+
+interface FindFileResult {
+    size: number,
+    mime: string,
+    locations: Location[]
+}
+
+interface FindFileResults extends Map<string, FindFileResult> {
+}
 
 const errcode = require('err-code');
 // import errorcode from 'err';
@@ -27,38 +46,107 @@ const {publicAddressesFirst} = require('libp2p-utils/src/address-sort');
 const protons = require('protons');
 const PROTOCOL = '/libp2p/file/1.0.0'
 
+interface FileInfoResponse {
+    type: number,
+    info: FileInfo[]
+}
+
+interface FileInfo {
+    id: number;
+    path: string;
+    mime: string;
+    checksum: string;
+    size: number;
+    createdAt: string | any;
+    updatedAt: string | any;
+}
+
 const {Request} = protons(`
 message Request {
   enum Type {
-    PUBLISH = 1;
-    GET = 2;
+    INFO = 1;
+    DOWNLOAD = 2;
   }
   
   required Type type = 1;
-  optional PublishFile publish = 2;
-  optional SearchForFile search = 3;
+  optional FileInfo info = 2;
+  optional FileDownload download = 3;
 }
 
-message PublishFile {
-    required bytes id = 1;
-    required string name = 2;
+message FileDownload {
+    required int64 id = 1;
+}
+
+message FileInfo {
+    required string name = 1;
+}
+`);
+
+const {Response} = protons(`
+message Response {
+  enum Type {
+    INFO = 1;
+    DOWNLOAD = 2;
+  }
+  
+  required Type type = 1;
+  repeated FileInfo info = 2;
+  optional FileDownload download = 3;
+}
+
+message FileDownload {
+    required int64 id = 1;
+}
+
+message FileInfo {
+    required int64 id = 1;
+    required string path = 2;
     required int64 size = 3;
-}
-
-message SearchForFile {
-    required bytes name = 1;
+    required string mime = 4;
+    required string checksum = 5;
+    required string createdAt = 6;
+    required string updatedAt = 7;
 }
 `);
 
 export class Protocol {
     private node: Libp2p;
+    private db: Db;
 
-    constructor(node: Libp2p) {
+    constructor(node: Libp2p, db: Db) {
         this.node = node;
-        this.node.handle(PROTOCOL, this.sendFile)
+        this.db = db;
+        this.handleInfo = this.handleInfo.bind(this);
+        this.handle = this.handle.bind(this);
+        this.node.handle(PROTOCOL, this.handle);
     }
 
-    private static async createCidsFromName(name: string): Promise<CID[]> {
+    static async* stream(path: string) {
+        // for (let i = 0; i < 17 / 2; i++) {
+        //     // 1mb
+        //     yield Buffer.alloc(1000000)
+        // }
+        const readStream = fs.createReadStream(path);
+        // const readStream = fs.ReadStream.from(['test', '123', 'this should be long', 'short'])
+        for await (const chunk of readStream) {
+            yield chunk;
+        }
+    }
+
+    static echo(length: boolean) {
+        return async function* (source: any) {
+            for await (const message of source) {
+                if (length) {
+                    const len = varintDecode(message);
+                    // console.log(`Chunk length: ${fileSize(len)}`); // THIS IS SIZE
+                }
+                // console.log(`${message.slice()}`);
+                yield message;
+            }
+        }
+    }
+
+    private static async createCidFromName(name: string): Promise<CID[]> {
         const bytes = json.encode({name: name});
         const hash = await sha256.digest(bytes);
         return [new CID(1, json.code, hash.bytes)];
@@ -74,7 +162,7 @@ export class Protocol {
 
         const extName = path.extname(filePath);
         const name = path.basename(filePath, extName);
-        const [cid] = await Protocol.createCidsFromName(name);
+        const [cid] = await Protocol.createCidFromName(name);
 
         const bytes = raw.encode(content);
         const hash = await sha256.digest(bytes);
@@ -95,141 +183,167 @@ export class Protocol {
             throw errcode(Error(`File ${filePath} does not exist`), 'FILE_DOES_NOT_EXIST');
         }
         const details = await Protocol.details(filePath);
-        const existing = await File.findOne({
-            limit: 1, where: {
-                // @ts-ignore
-                hash: details.fileHash.toString()
-            }
-        });
-        console.info(`existing: ${existing}`);
-        if (existing != null) {
+
+        const existing = await this.db.fileRepository.findOneByChecksum(details.fileHash.toString());
+        if (existing) {
             throw errcode(Error(`File ${filePath} with identical content already published`), 'FILE_ALREADY_PUBLISHED');
         }
 
-        const existingByPath = await File.findOne({
-            limit: 1, where: {
-                // @ts-ignore
-                path: details.path
-            }
-        });
-        console.info(`existing: ${existing}`);
+        const existingByPath = await this.db.fileRepository.findOneByPath(details.path);
         if (existingByPath != null) {
             throw errcode(Error(`File ${filePath} with different content but same path already published`), 'FILE_ALREADY_PUBLISHED');
         }
 
-        const file = await File.create({
-            path: details.path,
-            size: details.size,
-            mime: 'TODO',
-            hash: details.fileHash.toString(),
-        });
-        await Published.create({cid: details.cid.toString(), value: details.name, fileId: file.id});
+        const hash = this.db.hashRepository.create();
+        hash.cid = details.cid.toString();
+        hash.value = details.name;
 
+        const file = this.db.fileRepository.create();
+        file.checksum = details.fileHash.toString();
+        file.path = details.path;
+        file.size = details.size;
+        file.mime = 'TODO';
+        file.hashes = [hash];
+        await this.db.fileRepository.save(file);
         await this.node.contentRouting.provide(details.cid);
         logger.info(`published [${details.cid.toString()}] ${filePath}`);
     }
 
-    async find(name: string): Promise<any> {
-        const [cid] = await Protocol.createCidsFromName(name);
-        console.log(cid);
+
+    async find(name: string): Promise<FindFileResults> {
+        const [cid] = await Protocol.createCidFromName(name);
         logger.info(`searching for [${cid.toString()}]`);
 
-        const arr: any = [];
+        const results: FindFileResults = new Map();
 
-        const local = await Published.findOne({
-            include: [File], limit: 1, where: {
-                // @ts-ignore
-                cid: cid.toString()
-            }
-        });
-        if (local != null) {
-            arr.push(local.file);
+        // TODO: not one
+        const local = await this.db.hashRepository.findOneByCid(cid.toString());
+        if (local) {
+            local.files.forEach(file => {
+                const result: FindFileResult = {
+                    mime: file.mime,
+                    size: file.size,
+                    locations: [{
+                        fileId: file.id, path: file.path, provider: {
+                            isLocal: true,
+                            id: this.withoutPrivKey(),
+                            multiaddrs: this.node.multiaddrs
+                        }
+                    }]
+                };
+                results.set(file.checksum, result);
+            });
         }
-        // if there are providers, ask them to give details about file
-        console.log('trace0')
-        // findProviders(CID) throws
-        try {
-            // NOTE: This does not work when providers are not stored locally but rather fetched from other peers.
-            // returned data contains only peer id and not the multiaddrs
-            // will fail on `storeAddresses(source, this.libp2p.peerStore)`
-            const providers = await this.node?.contentRouting.findProviders(cid);
-            console.log('trace1');
 
-            // @ts-ignore
+        let providers = undefined;
+        try {
+            providers = await this.node.contentRouting.findProviders(cid);
+        } catch (e) {
+            logger.error(e);
+            return results;
+        }
+        console.log('trace0')
+
+        try {
             for await(const provider of providers) {
-                console.log(`provider: ${provider}`)
                 // is local
                 if (provider.id.equals(this.node.peerId)) {
                     logger.debug(`I have '${name}'!`);
-
-                    // arr.push(File.find)
                     continue;
                 }
-                console.log(provider);
+
+                console.log(`provider: ${provider}`)
+
                 const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
-                const response = await pipe(
+                const request = Request.encode({
+                    type: Request.Type.INFO,
+                    info: {name}
+                })
+
+                const response: FileInfoResponse = await pipe(
                     // Source data
-                    [`${name}`],
+                    [request],
                     // Write to the stream, and pass its output to the next function
                     stream,
                     // Sink function
                     async (source: any) => {
                         const buf: any = await first(source)
                         if (buf) {
-                            return buf.slice()
+                            return Response.decode(buf.slice());
+                            // return buf.slice()
                         }
                     }
                 )
 
-                if (response.length === 0) {
-                    throw errcode(new Error('No message received'), 'ERR_NO_MESSAGE_RECEIVED')
+                if (!response || response.type !== Response.Type.INFO) {
+                    continue;
                 }
 
-                logger.debug(String(response));
-                const responseParsed = JSON.parse(String(response));
-                if (responseParsed) {
-                    const withProvider = {provider, ...responseParsed};
-                    arr.push(withProvider);
-                }
+                response.info.map(file => {
+                    if (results.has(file.checksum)) {
+                        results.get(file.checksum)?.locations.push({
+                            fileId: file.id,
+                            path: file.path,
+                            provider: {
+                                isLocal: false,
+                                id: this.withoutPrivKey(provider.id),
+                                multiaddrs: provider.multiaddrs
+                            }
+                        })
+                    } else {
+                        const result: FindFileResult = {
+                            mime: file.mime,
+                            size: file.size,
+                            locations: [{
+                                fileId: file.id, path: file.path, provider: {
+                                    isLocal: false,
+                                    id: this.withoutPrivKey(provider.id),
+                                    multiaddrs: provider.multiaddrs
+                                }
+                            }]
+                        };
+                        results.set(file.checksum, result);
+                    }
+                });
             }
         } catch (e) {
             console.error(e);
         }
 
-        return arr;
+        return results;
     }
 
     async handle({connection, stream}: ({ connection: any, stream: any })) {
+        let that = this;
         try {
             await pipe(
                 stream,
-                (source: any) => (async function* () {
-                    for await (const message of source) {
-                        console.info(`[RECV] ${connection.remotePeer.toB58String().slice(0, 8)}: ${String(message)}`)
-                        // createFromCID()
-                        const [cid] = await Protocol.createCidsFromName(String(message));
-                        console.log(cid);
-                        logger.info(`searching for [${cid.toString()}]`);
-
-                        const local = await Published.findOne({
-                            include: [File], limit: 1, where: {
-                                // @ts-ignore
-                                cid: cid.toString()
+                (source: AsyncIterable<Uint8Array>) => (async function* () {
+                    const buffer = await first(source) as any;
+                    const request = Request.decode(buffer.slice());
+                    logger.info(`REQUEST: ${JSON.stringify(request)}`);
+                    switch (request.type) {
+                        case Request.Type.INFO:
+                            const response = await that.handleInfo(request);
+                            if (response) {
+                                yield Response.encode(response);
                             }
-                        });
-                        if (local === null) {
-                            yield null;
-                            continue;
-                        }
+                            break;
+                        case Request.Type.DOWNLOAD:
+                            for await (const chunk of that.handleDownload(stream, request)) {
+                                yield chunk
+                            }
 
-                        if (!fs.existsSync(local.file.path)) {
-                            // TODO: Update db
-                            continue;
-                        }
-
-                        yield JSON.stringify(local.file);
+                            break;
+                        default:
+                        // do nothing
                     }
                 })(),
+                // lp.encode({lengthEncoder: int32BEEncode}),
+                // Encode with length prefix (so receiving side knows how much data is coming)
+                // lp.encode(),
+                // Protocol.echo(true),
+                // stream,
                 stream
             )
         } catch (err) {
@@ -237,31 +351,39 @@ export class Protocol {
         }
     }
 
-    static async* fileData() {
-        // for (let i = 0; i < 17 / 2; i++) {
-        //     // 1mb
-        //     yield Buffer.alloc(1000000)
-        // }
-        const readStream = fs.createReadStream('/home/dejano/Projects/libp2p-hello-world/output.300mb.dat');
+    async* handleDownload(stream: MuxedStream, request: any) {
+        // TODO valid path
+        const file = await this.db.fileRepository.findOne({id: request.download.id});
+        if (!file) {
+            return;
+        }
+
+        const readStream = fs.createReadStream(file.path);
         // const readStream = fs.ReadStream.from(['test', '123', 'this should be long', 'short'])
         for await (const chunk of readStream) {
             yield chunk;
         }
     }
 
-    static echo(length: boolean) {
-        return async function* (source: any) {
-            for await (const message of source) {
-                if (length) {
-                    const len = varintDecode(message);
-                    // console.log(`Chunk length: ${fileSize(len)}`); // THIS IS SIZE
-                }
-                // console.log(`${message.slice()}`);
-                yield message;
-            }
+    async handleInfo(request: any): Promise<FileInfoResponse | undefined> {
+        const [cid] = await Protocol.createCidFromName(request.info.name);
+        logger.debug(`searching for [${cid.toString()}]`);
+        const hashes = await this.db.hashRepository.findOneByCid(cid.toString());
+        if (!hashes?.files?.length) {
+            return undefined;
         }
-    }
 
+        const validFiles: File[] = hashes.files.filter(file => fs.existsSync(file.path));
+        hashes.files.filter(file => !validFiles.includes(file)).forEach(file => {
+            logger.info(`Invalid file: ${file.path}`);
+            // TODO: Update db
+        });
+
+        return {
+            type: Response.Type.INFO,
+            info: validFiles.map(file => ({...file}))
+        };
+    }
 
     async sendFile({connection, stream}: ({ connection: any, stream: MuxedStream })) {
         // stream.Readable.from()
@@ -278,7 +400,7 @@ export class Protocol {
         // readStream.read
         try {
             await pipe(
-                Protocol.fileData(),
+                Protocol.stream(''),
                 // lp.encode({lengthEncoder: int32BEEncode}),
                 lp.encode(),
                 Protocol.echo(true),
@@ -292,14 +414,19 @@ export class Protocol {
     }
 
     async download(provider: PeerId, fileId: number) {
+        // TODO: Line below recreates file
         const out = fs.createWriteStream('download.data');
         try {
             const {stream} = await this.node?.dialProtocol(provider, PROTOCOL);
+            const request = Request.encode({
+                type: Request.Type.DOWNLOAD,
+                download: {id: fileId}
+            });
             await pipe(
-                [fileId],
+                [request],
                 stream,
                 // lp.decode({lengthDecoder: int32BEDecode}),
-                lp.decode(),
+                // lp.decode(),
                 async function save(source: any) {
                     for await (const message of source) {
                         await out.write(message.slice()); // (.slice converts BufferList to Buffer)
@@ -321,6 +448,14 @@ export class Protocol {
         // download
         // store
         // say to network that I also have this file now
+    }
+
+    private withoutPrivKey(peerId: PeerId = this.node.peerId): ({ id: string, pubKey: string }) {
+        const id = {...peerId.toJSON()};
+        return {
+            id: id.id,
+            pubKey: id.pubKey ?? ''
+        };
     }
 
     // async writeReadMessage (stream, msg) {

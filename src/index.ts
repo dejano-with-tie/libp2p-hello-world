@@ -4,13 +4,14 @@ import {discover} from "./nat";
 import {Node} from './node';
 import {run as gateway} from "./gateway";
 import {Db} from './models';
+import Hash from "./models/hash.model";
 
 
 const main = async (single: boolean) => {
     if (single) {
         await singleNode();
     } else {
-        await multiple(3);
+        await multiple(2);
     }
 };
 
@@ -24,12 +25,12 @@ const multiple = async (n: number) => {
             .alias(`local-${nodeIndex}`)
             .nodePort(8000 + nodeIndex)
             .gatewayPort(3000 + nodeIndex)
-            .db(`sqlite:./data-${nodeIndex}.sqlite`)
+            .db(`./data-${nodeIndex}.sqlite`)
             .filePath(`./config/config.${nodeIndex}.json`)
             .build(), natType);
 
-        await (new Db(config.file.db)).createAndConnect();
-        const node = await Node.run(config);
+        const db = await Db.createAndConnect(config.file.db);
+        const node = await Node.run(config, db);
         gateway(node);
     }
 }
@@ -37,9 +38,9 @@ const multiple = async (n: number) => {
 const singleNode = async () => {
     const natType = await discover();
     const config = await libp2pConfig(Builder(defaultConfigBuilder).alias("local").build(), natType);
-    await (new Db(config.file.db)).createAndConnect();
 
-    const node = await Node.run(config);
+    const db = await Db.createAndConnect(config.file.db);
+    const node = await Node.run(config, db);
     gateway(node);
 }
 

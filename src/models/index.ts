@@ -1,20 +1,32 @@
-import {Sequelize} from "sequelize-typescript";
-import {isProd} from "../util";
+import {createConnection, getCustomRepository} from "typeorm";
+import {Connection} from "typeorm/connection/Connection";
+import {FileRepository} from "../repository/file.repository";
+import {HashRepository} from "../repository/hash.repository";
 
 export class Db {
-    private sequelize: Sequelize;
+    public fileRepository: FileRepository;
+    public hashRepository: HashRepository;
+    private conn: Connection;
+    private path: string;
 
-    constructor(url: string) {
-        this.sequelize = new Sequelize(url, {
-            logging: !isProd() ? console.log : false,
-            logQueryParameters: true,
-            models: [__dirname + '/*.model.ts']
-        });
+    private constructor(path: string, conn: Connection) {
+        this.path = path;
+        this.conn = conn;
+        this.fileRepository = getCustomRepository(FileRepository, conn.name);
+        this.hashRepository = getCustomRepository(HashRepository, conn.name);
     }
 
-    async createAndConnect() {
-        // await this.sequelize.sync({force: !isProd()});
-        await this.sequelize.sync({force: false});
-        await this.sequelize.authenticate();
+    public static async createAndConnect(path: string) {
+        const conn = await createConnection({
+            type: 'sqlite',
+            name: path,
+            database: path,
+            entities: [
+                __dirname + '/*.ts'
+            ],
+            synchronize: true
+        });
+        const db = new Db(path, conn);
+        return db;
     }
 }

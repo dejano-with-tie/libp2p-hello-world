@@ -5,9 +5,9 @@ import Multiaddr from "multiaddr";
 import EventEmitter from 'events';
 import {Protocol} from './protocol';
 import {Config} from "./config";
-import Published from "./models/published.model";
-import CID from "cids";
 import util from 'util';
+import {Db} from "./models";
+import CID from "cids";
 
 const sleep = util.promisify(setTimeout);
 
@@ -18,23 +18,24 @@ class Node {
     public readonly config: Config;
     // @ts-ignore
     private protocol: Protocol;
+    private db: Db;
 
-    private constructor(config: Config) {
+    private constructor(config: Config, db: Db) {
 
         this.config = config;
+        this.db = db;
         logger.debug(`Creating node with config: ${JSON.stringify(this.config, null, 4)}`);
         if (this.config.libp2p.config?.relay?.hop.enabled) {
             logger.info('Node acting as relay');
         }
     }
 
-    public static run = async (config: Config): Promise<Node> => {
-        const node = new Node(config);
+    public static run = async (config: Config, db: Db): Promise<Node> => {
+        const node = new Node(config, db);
         node.libp2p = await Libp2p.create(node.config.libp2p);
         await node.start();
 
-
-        node.protocol = new Protocol(node.libp2p);
+        node.protocol = new Protocol(node.libp2p, db);
         logger.info(`Node ID: ${node.libp2p.peerId.toB58String()}`);
         logger.debug('libp2p is listening on the following addresses: ', node.libp2p.transportManager.getAddrs());
         logger.debug('libp2p is advertising the following addresses: ', node.libp2p.multiaddrs);
@@ -59,7 +60,7 @@ class Node {
         await this.protocol.publish(filePath);
     }
 
-    public async find(name: string): Promise<{ id: PeerId; multiaddrs: Multiaddr[] }[] | undefined> {
+    public async find(name: string): Promise<any | undefined> {
         return await this.protocol.find(name);
     }
 
@@ -106,12 +107,14 @@ class Node {
         // rebroadcast files
         setTimeout(() => {
             (async () => {
-                for (const published of (await Published.findAll())) {
-                    await this.libp2p.contentRouting.provide(new CID(published.cid));
-                    logger.info(`published [${JSON.stringify(published)}]`);
+                for (const file of (await this.db.fileRepository.findAllValid({relations: ['hashes']}))) {
+                    for (const hash of file.hashes) {
+                        await this.libp2p.contentRouting.provide(new CID(hash.cid));
+                        logger.info(`Republished: ${JSON.stringify(file.path)}`);
+                    }
                 }
             })();
-        }, 10 * 1000);
+        }, 2 * 1000);
     }
 }
 

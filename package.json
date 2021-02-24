@@ -53,6 +53,7 @@
     "sequelize-typescript": "^2.1.0",
     "sqlite3": "^5.0.2",
     "streaming-iterables": "^5.0.2",
+    "typeorm": "^0.2.31",
     "uint8arrays": "^2.1.2",
     "winston": "^3.3.3"
   },

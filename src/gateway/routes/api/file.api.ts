@@ -25,7 +25,7 @@ async function publish(req: express.Request, res: express.Response, next: any) {
 async function find(req: express.Request, res: express.Response) {
     const providers = await res.locals.node.find(req.params['name']);
     logger.info(providers);
-    res.send(providers);
+    res.send(JSON.stringify([...providers]));
 }
 
 

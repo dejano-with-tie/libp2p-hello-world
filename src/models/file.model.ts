@@ -1,40 +1,52 @@
-import {AllowNull, AutoIncrement, Column, HasMany, Model, PrimaryKey, Table, Unique} from 'sequelize-typescript';
-import Published from "./published.model";
+import Hash from "./hash.model";
+import {
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinTable,
+    ManyToMany,
+    PrimaryGeneratedColumn,
+    UpdateDateColumn
+} from "typeorm";
 
-@Table({
-    timestamps: true
-})
-export default class File extends Model {
+@Entity()
+export default class File {
 
-    @AutoIncrement
-    @PrimaryKey
-    @Column
+    @PrimaryGeneratedColumn()
         // @ts-ignore
-    id: bigint
+    id: number
 
-    @Unique
-    @AllowNull(false)
-    @Column({})
+    @Column({nullable: false, unique: true})
         // @ts-ignore
     path: string
 
-    @AllowNull(false)
-    @Column
+    @Column({nullable: false, default: true})
         // @ts-ignore
-    size: bigint
+    pathIsValid: boolean
 
-    @AllowNull(false)
-    @Column
+    @Column({nullable: false})
+        // @ts-ignore
+    size: number
+
+    @Column({nullable: false})
         // @ts-ignore
     mime: string
 
-    @AllowNull(false)
-    @Column
+    @Column({nullable: false})
         // @ts-ignore
-    hash: string
+    checksum: string
 
-    @HasMany(() => Published)
+    @CreateDateColumn()
         // @ts-ignore
-    published: Published[]
+    createdAt: Date;
+
+    @UpdateDateColumn()
+        // @ts-ignore
+    updatedAt: Date;
+
+    @ManyToMany(() => Hash, hash => hash.files, {cascade: true})
+    @JoinTable()
+        // @ts-ignore
+    hashes: Hash[];
 
 }
