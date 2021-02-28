@@ -1,14 +1,14 @@
 {
-    "alias": "local",
-    "db": "sqlite:./data.sqlite",
-    "network": {
-        "bootstrapPeers": [
-            "/ip4/18.211.111.71/tcp/8000/ipfs/QmWLShkyvsu4MKL28VHoLzR5fr1u8sz6YJEo91T9Tv2vnC"
-        ],
-        "port": 8000
-    },
-    "gateway": {
-        "port": 3000
-    },
-    "configFilePath": "./config/config.json"
+  "alias": "local",
+  "db": "./db.sqlite",
+  "network": {
+    "bootstrapPeers": [
+      "/ip4/18.211.111.71/tcp/8000/ipfs/QmReSGTAwqCLir1Y4gU3omaYEHL8aTSPoZCbzzw4RQhenk"
+    ],
+    "port": 8999
+  },
+  "gateway": {
+    "port": 3999
+  },
+  "peerIdFilePath": "./config/id.json"
 }

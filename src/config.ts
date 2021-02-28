@@ -17,17 +17,16 @@ const MulticastDNS = require('libp2p-mdns');
 
 export interface ConfigBuilder {
     alias?: string;
-    peer?: PeerId;
     db?: string;
-    nodePort: number;
-    gatewayPort: number;
+    nodePort?: number;
+    gatewayPort?: number;
     filePath: string;
+    peerIdFilePath: string;
 }
 
 export const defaultConfigBuilder: ConfigBuilder = {
-    nodePort: 8000,
-    gatewayPort: 3000,
-    filePath: './config/config.json'
+    filePath: './config/config.json',
+    peerIdFilePath: './config/id.json'
 };
 
 export interface Config {
@@ -39,11 +38,9 @@ export interface Config {
 export interface FileConfig {
     alias: string;
     db: string;
-    peer: PeerId;
     network: Network;
     gateway: Gateway;
-    configFilePath: string;
-
+    peerIdFilePath: string;
 }
 
 interface Network {
@@ -57,8 +54,10 @@ interface Gateway {
 
 export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Promise<Config> => {
     const fileConfig: FileConfig = await from(builder);
+    const peer = await peerId(builder.peerIdFilePath);
+
     const libp2pConfig = {
-        peerId: fileConfig.peer,
+        peerId: peer,
         addresses: {
             listen: [
                 `/ip4/0.0.0.0/tcp/${fileConfig.network.port}`,
@@ -119,38 +118,31 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
 
 const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
     const configFilePath = fsPath.join(__dirname, '..', builder.filePath);
-    const config: FileConfig = loadFile(configFilePath);
-    config.configFilePath = builder.filePath;
-    config.network.port = builder.nodePort;
-    config.gateway.port = builder.gatewayPort;
-    config.alias = builder.alias || config.alias;
-    config.db = builder.db || config.db;
-    config.peer = builder.peer || config.peer;
+    const fileConfig: FileConfig = loadFile(configFilePath);
 
-    const [generated, peer] = await generatePeer(config.peer);
-    config.peer = await PeerId.createFromJSON(JSON.parse(JSON.stringify(peer)));
-    if (generated) {
-        await save(config, configFilePath);
-    }
+    fileConfig.network.port = builder.nodePort || fileConfig.network.port;
+    fileConfig.gateway.port = builder.gatewayPort || fileConfig.gateway.port;
+    fileConfig.alias = builder.alias || fileConfig.alias;
+    fileConfig.db = builder.db || fileConfig.db;
+    fileConfig.peerIdFilePath = builder.peerIdFilePath || fileConfig.peerIdFilePath;
 
-    logger.debug(`File config: ${JSON.stringify(config, null, 4)}`);
-    return config;
+    logger.debug(`File config: ${JSON.stringify(fileConfig, null, 4)}`);
+    return fileConfig;
 };
 
 const loadFile = (configFilePath: string): FileConfig => {
     return (JSON.parse(fs.readFileSync(configFilePath).toString()) as FileConfig);
 };
 
-const generatePeer = async (peer: PeerId): Promise<[boolean, PeerId]> => {
-    if (peer) {
-        return [false, await PeerId.createFromJSON(JSON.parse(JSON.stringify(peer)))];
+async function peerId(peerIdFilePath: string): Promise<PeerId> {
+    if (fs.existsSync(peerIdFilePath)) {
+        const text = JSON.parse(fs.readFileSync(peerIdFilePath).toString());
+        console.log(text);
+        return await PeerId.createFromJSON(text);
     }
-    // otherwise generate peer
+
     const id = await PeerId.create();
     logger.info(`Generated new peer ID: ${id.toB58String()}`);
-    return [true, id];
-}
-
-const save = async (config: FileConfig, path: string): Promise<void> => {
-    await fs.writeFileSync(path, JSON.stringify(config, null, 4));
+    fs.writeFileSync(peerIdFilePath, JSON.stringify(id.toJSON(), null, 4));
+    return id;
 }

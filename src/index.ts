@@ -4,14 +4,13 @@ import {discover} from "./nat";
 import {Node} from './node';
 import {run as gateway} from "./gateway";
 import {Db} from './models';
-import Hash from "./models/hash.model";
 
 
-const main = async (single: boolean) => {
-    if (single) {
-        await singleNode();
+const main = async (runMultiple: boolean) => {
+    if (runMultiple) {
+        await multiple(3);
     } else {
-        await multiple(2);
+        await singleNode();
     }
 };
 
@@ -20,13 +19,16 @@ const main = async (single: boolean) => {
  */
 const multiple = async (n: number) => {
     const natType = await discover();
+
     for await (const nodeIndex of Array(n).keys()) {
+        const basePort = 3000 + nodeIndex;
         const config = await libp2pConfig(Builder(defaultConfigBuilder)
-            .alias(`local-${nodeIndex}`)
-            .nodePort(8000 + nodeIndex)
-            .gatewayPort(3000 + nodeIndex)
-            .db(`./data-${nodeIndex}.sqlite`)
-            .filePath(`./config/config.${nodeIndex}.json`)
+            .alias(`local-${basePort}`)
+            .gatewayPort(basePort)
+            .nodePort(basePort + 5000)
+            .db(`./data-${basePort}.sqlite`)
+            .filePath(`./config/config.json`)
+            .peerIdFilePath(`./config/id.${basePort}.json`)
             .build(), natType);
 
         const db = await Db.createAndConnect(config.file.db);
@@ -37,14 +39,38 @@ const multiple = async (n: number) => {
 
 const singleNode = async () => {
     const natType = await discover();
-    const config = await libp2pConfig(Builder(defaultConfigBuilder).alias("local").build(), natType);
+    const config = await libp2pConfig(builderFromEnv().build(), natType);
 
     const db = await Db.createAndConnect(config.file.db);
     const node = await Node.run(config, db);
     gateway(node);
 }
 
+function builderFromEnv() {
+    const builder = Builder(defaultConfigBuilder);
+
+    if (process.env.GATEWAY_PORT) {
+        builder.gatewayPort(Number(process.env.GATEWAY_PORT));
+    }
+
+    if (process.env.NODE_PORT) {
+        builder.nodePort(Number(process.env.NODE_PORT));
+    }
+
+    if (process.env.ALIAS) {
+        builder.alias(process.env.ALIAS);
+    }
+
+    if (process.env.DB_PATH) {
+        builder.db(process.env.DB_PATH);
+    }
+
+    if (process.env.PEER_ID) {
+        builder.peerIdFilePath(process.env.PEER_ID);
+    }
+    return builder;
+}
+
 (async () => {
-    // await main(!!process.env.SINGLE || false);
-    await main(false);
+    await main(process.env.MULTIPLE === 'true');
 })();
