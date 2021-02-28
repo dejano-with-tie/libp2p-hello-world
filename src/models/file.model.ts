@@ -8,9 +8,10 @@ import {
     PrimaryGeneratedColumn,
     UpdateDateColumn
 } from "typeorm";
+import Auditing from "./auditing.model";
 
 @Entity()
-export default class File {
+export default class File  extends Auditing{
 
     @PrimaryGeneratedColumn()
         // @ts-ignore
@@ -35,14 +36,6 @@ export default class File {
     @Column({nullable: false})
         // @ts-ignore
     checksum: string
-
-    @CreateDateColumn()
-        // @ts-ignore
-    createdAt: Date;
-
-    @UpdateDateColumn()
-        // @ts-ignore
-    updatedAt: Date;
 
     @ManyToMany(() => Hash, hash => hash.files, {cascade: true})
     @JoinTable()

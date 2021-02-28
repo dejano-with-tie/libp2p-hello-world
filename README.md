@@ -35,3 +35,9 @@ Will reload on changes which is convenient for development
 ### Using node ###
 
 Once ts files are transpiled, use `lib/index.js` as entry point 
+
+
+### Random notes ###
+
+- http://localhost:3000/api/file/publish/%2Fhome%2Fdejano%2FProjects%2Flibp2p-hello-world%2FDockerfile
+- http://localhost:3000/api/file/publish/%2Fhome%2Fdejano%2FProjects%2Flibp2p-hello-world%2Foutput.300mb.dat

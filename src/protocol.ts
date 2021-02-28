@@ -14,6 +14,14 @@ import lp, {varintDecode} from 'it-length-prefixed';
 import {Db} from "./models";
 import Multiaddr from "multiaddr";
 import File from "./models/file.model";
+import fileSize from "filesize";
+import {EOL} from "os";
+import Download from "./models/download.model";
+import EventEmitter from "events";
+import WritableStream = NodeJS.WritableStream;
+
+const afterBreak = false;
+const offset = 160366592;
 
 interface Provider {
     isLocal: boolean;
@@ -109,40 +117,57 @@ message FileInfo {
 }
 `);
 
+const {DownloadResponse} = protons(`
+message DownloadResponse {
+    required bytes data = 1;
+    optional bool error = 2;
+}
+`);
+
 export class Protocol {
     private node: Libp2p;
     private db: Db;
+    private downloadEvent: EventEmitter;
+    // in mem tracker of active dls
+    private downloads = new Map<number, any>();
 
-    constructor(node: Libp2p, db: Db) {
+    constructor(node: Libp2p, db: Db, downloadEvent: EventEmitter) {
         this.node = node;
         this.db = db;
+        this.downloadEvent = downloadEvent
         this.handleInfo = this.handleInfo.bind(this);
         this.handle = this.handle.bind(this);
         this.node.handle(PROTOCOL, this.handle);
+        this.downloadEvent.on('pause', ({downloadId}: ({ downloadId: number })) => {
+            if (this.downloads.has(downloadId)) {
+                const dl = this.downloads.get(downloadId);
+                // TODO: If prev state is inprogress
+                dl.status = 'paused';
+            }
+            console.log('got pause');
+        });
     }
 
-    static async* stream(path: string) {
-        // for (let i = 0; i < 17 / 2; i++) {
-        //     // 1mb
-        //     yield Buffer.alloc(1000000)
-        // }
-        const readStream = fs.createReadStream(path);
-        // const readStream = fs.ReadStream.from(['test', '123', 'this should be long', 'short'])
-        for await (const chunk of readStream) {
-            yield chunk;
-        }
-    }
-
-    static echo(length: boolean) {
+    static echo(totalSize: number, out: WritableStream) {
+        let total = afterBreak ? offset : 0;
+        let prevProgress = 0;
         return async function* (source: any) {
             for await (const message of source) {
-                if (length) {
-                    const len = varintDecode(message);
-                    // console.log(`Chunk length: ${fileSize(len)}`); // THIS IS SIZE
+                // err part is 4 bytes
+                const len = varintDecode(message) - 4;
+                total += len;
+                const progress = Math.floor((total / totalSize) * 100);
+                // if (progress > 50 && !afterBreak) {
+                //     // simulate err
+                //     throw errcode(new Error('simulate error'), 'simulate error');
+                // }
+                if (prevProgress !== progress) {
+                    out.write(String(progress) + '%' + EOL);
+                    prevProgress = progress;
                 }
-                // console.log(`${message.slice()}`);
                 yield message;
             }
+            console.log(fileSize(total, {exponent: 1}))
         }
     }
 
@@ -168,8 +193,11 @@ export class Protocol {
         const hash = await sha256.digest(bytes);
         const fileHash = new CID(1, raw.code, hash.bytes,);
 
+        console.log(stat.size / 1024);
+        console.log(stat.size / 1000);
+        console.log(fileSize(stat.size, {exponent: 1}));
         return {
-            size: stat.size,
+            size: stat.size,//fileSize(stat.size, {exponent: 1 output: 'object'}).value, //fileSize(stat.size, {round: 0, exponent: 1, output: 'object'}).value,
             cid,
             path: filePath,
             extName,
@@ -316,52 +344,72 @@ export class Protocol {
     async handle({connection, stream}: ({ connection: any, stream: any })) {
         let that = this;
         try {
+
             await pipe(
                 stream,
                 (source: AsyncIterable<Uint8Array>) => (async function* () {
                     const buffer = await first(source) as any;
                     const request = Request.decode(buffer.slice());
                     logger.info(`REQUEST: ${JSON.stringify(request)}`);
-                    switch (request.type) {
-                        case Request.Type.INFO:
-                            const response = await that.handleInfo(request);
-                            if (response) {
-                                yield Response.encode(response);
-                            }
-                            break;
-                        case Request.Type.DOWNLOAD:
-                            for await (const chunk of that.handleDownload(stream, request)) {
-                                yield chunk
-                            }
+                    try {
+                        switch (request.type) {
+                            case Request.Type.INFO:
+                                const response = await that.handleInfo(request);
+                                if (response) {
+                                    yield Response.encode(response);
+                                }
+                                break;
+                            case Request.Type.DOWNLOAD:
+                                for await (const chunk of that.handleDownload(stream, request)) {
+                                    yield chunk
+                                }
 
-                            break;
-                        default:
-                        // do nothing
+                                break;
+                            default:
+                            // do nothing
+                        }
+                    } catch (e) {
+                        // TODO: Response with error here
+                        console.log(e);
+                        // NOTE: yield null/undefined will close the stream
+                        // yield 'a';
+                        // return;
                     }
                 })(),
                 // lp.encode({lengthEncoder: int32BEEncode}),
                 // Encode with length prefix (so receiving side knows how much data is coming)
-                // lp.encode(),
-                // Protocol.echo(true),
+                lp.encode(),
                 // stream,
                 stream
             )
         } catch (err) {
+            // TODO: This error is not catching errors inside pipe fns
             console.error(err)
         }
     }
 
+    // TODO: Request is not any but proto request
     async* handleDownload(stream: MuxedStream, request: any) {
         // TODO valid path
         const file = await this.db.fileRepository.findOne({id: request.download.id});
         if (!file) {
+            yield DownloadResponse.encode({
+                error: true,
+                data: Buffer.from('invalid file id'),
+            });
             return;
         }
 
-        const readStream = fs.createReadStream(file.path);
+        let options = {};
+        if (afterBreak) {
+            options = {start: offset}
+        }
+
+        const readStream = fs.createReadStream(file.path, options);
         // const readStream = fs.ReadStream.from(['test', '123', 'this should be long', 'short'])
         for await (const chunk of readStream) {
-            yield chunk;
+            yield DownloadResponse.encode({data: chunk});
+            // yield chunk;
         }
     }
 
@@ -385,62 +433,70 @@ export class Protocol {
         };
     }
 
-    async sendFile({connection, stream}: ({ connection: any, stream: MuxedStream })) {
-        // stream.Readable.from()
-        // let data: any[] = [];
 
-//         readStream.on('data', function(chunk) {
-//             data.push(chunk);
-//             console.log(chunk);// your processing chunk logic will go here
-//
-//         }).on('end', function() {
-//             console.log('###################');
-// // here you see all data processed at end of file
-//         });
-        // readStream.read
-        try {
-            await pipe(
-                Protocol.stream(''),
-                // lp.encode({lengthEncoder: int32BEEncode}),
-                lp.encode(),
-                Protocol.echo(true),
-                // Encode with length prefix (so receiving side knows how much data is coming)
-                stream,
-            )
-        } catch (err) {
-            console.error(err)
-        }
-        console.log('wrote everything');
+    async continueDownload(dl: Download, response: WritableStream) {
+        const stat = fs.statSync(dl.downloadPath);
+        const size = stat.size;
+
+
     }
 
-    async download(provider: PeerId, fileId: number) {
+    async download(provider: PeerId, fileId: number, downloadPath: string, totalSize: number, response: WritableStream) {
         // TODO: Line below recreates file
-        const out = fs.createWriteStream('download.data');
+        const out = fs.createWriteStream(downloadPath, {flags: 'a'});
+        let state = 'inprogress';
+        this.downloads.set(1, {status: 'inprogress'});
+        this.downloadEvent.on('pause', (b: any) => {
+            console.log('got pause');
+        });
         try {
             const {stream} = await this.node?.dialProtocol(provider, PROTOCOL);
             const request = Request.encode({
                 type: Request.Type.DOWNLOAD,
                 download: {id: fileId}
             });
-            await pipe(
+
+            const result = await pipe(
                 [request],
                 stream,
                 // lp.decode({lengthDecoder: int32BEDecode}),
-                // lp.decode(),
-                async function save(source: any) {
+                Protocol.echo(totalSize, response),
+                lp.decode(),
+                async (source: any) => {
                     for await (const message of source) {
-                        await out.write(message.slice()); // (.slice converts BufferList to Buffer)
-                        // console.log('saved');
+                        const buf = message.slice();
+                        if (!buf) {
+                            // no msg
+                            throw errcode(new Error('No message'), 'ERR_NO_MESSAGE_RECEIVED');
+                        }
+
+                        // await out.write(buf);
+                        const resp = DownloadResponse.decode(buf);
+                        if (resp.hasError()) {
+                            throw errcode(new Error(`Download failed: '${String(resp.data)}'`), 'ERR_DOWNLOAD_FILE');
+                        }
+                        await out.write(resp.data);
+
+                        if (this.downloads.has(1)) {
+                            const dl = this.downloads.get(1);
+                            if (dl.status === 'paused') {
+                                return 'paused';
+                            }
+                        }
                     }
+                    return 'completed';
                 }
                 // Decode length-prefixed data
                 // lp.decode(),
                 // out
-            )
+            );
+            console.info(`Response: ${result}`);
+            this.downloads.delete(1);
         } catch (e) {
+            this.downloads.delete(1);
             console.error(e);
+            throw e;
         }
-        console.log('done1');
         //
         // read.pipe(out);
 

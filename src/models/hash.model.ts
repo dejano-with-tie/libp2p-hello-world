@@ -1,9 +1,10 @@
 import File from "./file.model";
 import {Column, CreateDateColumn, Entity, ManyToMany, PrimaryColumn, UpdateDateColumn} from "typeorm";
+import Auditing from "./auditing.model";
 
 // TODO: Change this to Tag
 @Entity()
-export default class Hash {
+export default class Hash extends Auditing {
 
     @PrimaryColumn()
         // @ts-ignore
@@ -17,11 +18,4 @@ export default class Hash {
         // @ts-ignore
     files: File[];
 
-    @CreateDateColumn()
-        // @ts-ignore
-    createdAt: Date;
-
-    @UpdateDateColumn()
-        // @ts-ignore
-    updatedAt: Date;
 }
