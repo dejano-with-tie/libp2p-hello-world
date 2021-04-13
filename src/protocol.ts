@@ -280,7 +280,7 @@ export class Protocol {
                     continue;
                 }
 
-                console.log(`provider: ${provider}`)
+                console.log(`provider: ${provider.id.toB58String()}`)
 
                 const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
                 const request = Request.encode({
@@ -356,6 +356,7 @@ export class Protocol {
                             case Request.Type.INFO:
                                 const response = await that.handleInfo(request);
                                 if (response) {
+                                    console.log(`RESPONSE: ${JSON.stringify(response)}`);
                                     yield Response.encode(response);
                                 }
                                 break;
@@ -429,7 +430,10 @@ export class Protocol {
 
         return {
             type: Response.Type.INFO,
-            info: validFiles.map(file => ({...file}))
+            info: validFiles.map(file => {
+                let {pathIsValid, ...response} = file;
+                return response;
+            })
         };
     }
 
