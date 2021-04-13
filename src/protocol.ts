@@ -283,8 +283,8 @@ export class Protocol {
                 console.log(`provider: ${provider.id.toB58String()}`)
 
                 const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
-                const request = Request.encode({
-                    type: Request.Type.INFO,
+                const request = JSON.stringify({
+                    type: 1,
                     info: {name}
                 })
 
@@ -297,7 +297,7 @@ export class Protocol {
                     async (source: any) => {
                         const buf: any = await first(source)
                         if (buf) {
-                            return JSON.parse(buf.slice());
+                            return JSON.stringify(buf.slice().toString());
                             // return buf.slice()
                         }
                     }
@@ -349,18 +349,20 @@ export class Protocol {
                 stream,
                 (source: AsyncIterable<Uint8Array>) => (async function* () {
                     const buffer = await first(source) as any;
-                    const request = Request.decode(buffer.slice());
+                    const request = JSON.parse(buffer.slice().toString());
                     logger.info(`REQUEST: ${JSON.stringify(request)}`);
                     try {
                         switch (request.type) {
-                            case Request.Type.INFO:
+                            // INFO
+                            case 1:
                                 const response = await that.handleInfo(request);
                                 if (response) {
                                     console.log(`RESPONSE: ${JSON.stringify(response)}`);
                                     yield JSON.stringify(response);
                                 }
                                 break;
-                            case Request.Type.DOWNLOAD:
+                                // DOWNLOAD
+                            case 2:
                                 for await (const chunk of that.handleDownload(stream, request)) {
                                     yield chunk
                                 }
