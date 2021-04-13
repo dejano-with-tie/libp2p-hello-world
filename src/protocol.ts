@@ -380,8 +380,15 @@ export class Protocol {
         return {
             type: Response.Type.INFO,
             info: validFiles.map(file => {
-                let {pathIsValid, ...response} = file;
-                return response;
+                return {
+                    id: file.id,
+                    checksum: file.checksum,
+                    path: file.path,
+                    createdAt: file.createdAt.toString(),
+                    updatedAt: file.updatedAt.toString(),
+                    size: file.size,
+                    mime: file.mime
+                }
             })
         };
     }
