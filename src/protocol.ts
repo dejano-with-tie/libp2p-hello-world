@@ -297,7 +297,7 @@ export class Protocol {
                     async (source: any) => {
                         const buf: any = await first(source)
                         if (buf) {
-                            return Response.decode(buf.slice());
+                            return JSON.parse(buf.slice());
                             // return buf.slice()
                         }
                     }
@@ -357,7 +357,7 @@ export class Protocol {
                                 const response = await that.handleInfo(request);
                                 if (response) {
                                     console.log(`RESPONSE: ${JSON.stringify(response)}`);
-                                    yield Response.encode(response);
+                                    yield JSON.stringify(response);
                                 }
                                 break;
                             case Request.Type.DOWNLOAD:
