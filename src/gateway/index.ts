@@ -47,11 +47,28 @@ function configure(app: express.Application) {
 export const run = (node: Node) => {
     const app: express.Application = express();
 
-    app.use(context(node));
+    const http = require('http').Server(app);
 
+    var io = require('socket.io')(http, {
+        cors: {
+            origin: "*",
+            methods: "*"
+        }
+    })
+
+    app.use(context(node));
     configure(app);
 
-    app.listen(node.config.file.gateway.port, () => {
+
+    io.on('connection', (socket: any) => {
+        console.log('a user connected');
+        socket.on("message", (msg: any) => {
+            console.log(msg);
+            socket.emit("message-back", `hello there ${msg}`);
+        });
+    });
+
+    http.listen(node.config.file.gateway.port, () => {
         logger.info(`API Gateway available at http://localhost:${node.config.file.gateway.port}`);
     });
 }

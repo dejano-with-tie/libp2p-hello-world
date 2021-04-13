@@ -36,7 +36,6 @@ class Node {
 
         this.config = config;
         this.db = db;
-        logger.debug(`Creating node with config: ${JSON.stringify(this.config, null, 4)}`);
         if (this.config.libp2p.config?.relay?.hop.enabled) {
             logger.info('Node acting as relay');
         }
