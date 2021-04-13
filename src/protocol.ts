@@ -71,7 +71,7 @@ interface FileInfo {
 
 const protobuf = require('protocol-buffers')
 // pass a proto file as a buffer/string or pass a parsed protobuf-schema object
-const {Request, Response, DownloadResponse} = protobuf(fs.readFileSync('messages.proto'))
+const {Request, Response, DownloadResponse} = protobuf(fs.readFileSync('./messages.proto'))
 
 export class Protocol {
     private node: Libp2p;
