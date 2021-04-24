@@ -71,8 +71,7 @@ interface FileInfo {
 
 const protobuf = require('protocol-buffers')
 // pass a proto file as a buffer/string or pass a parsed protobuf-schema object
-const {Request, Response, DownloadResponse} = protobuf(fs.readFileSync('messages.proto'))
-
+const {Request, Response, DownloadResponse} = protobuf(fs.readFileSync('./messages.proto'))
 
 export class Protocol {
     private node: Libp2p;
@@ -230,7 +229,7 @@ export class Protocol {
                     continue;
                 }
 
-                console.log(`provider: ${provider}`)
+                console.log(`provider: ${provider.id.toB58String()}`)
 
                 const {stream} = await this.node?.dialProtocol(provider.id, PROTOCOL);
                 const request = Request.encode({
@@ -306,6 +305,7 @@ export class Protocol {
                             case Request.Type.INFO:
                                 const response = await that.handleInfo(request);
                                 if (response) {
+                                    console.log(`RESPONSE: ${JSON.stringify(response)}`);
                                     yield Response.encode(response);
                                 }
                                 break;
@@ -379,7 +379,17 @@ export class Protocol {
 
         return {
             type: Response.Type.INFO,
-            info: validFiles.map(file => ({...file}))
+            info: validFiles.map(file => {
+                return {
+                    id: file.id,
+                    checksum: file.checksum,
+                    path: file.path,
+                    createdAt: file.createdAt.toString(),
+                    updatedAt: file.updatedAt.toString(),
+                    size: file.size,
+                    mime: file.mime
+                }
+            })
         };
     }
 

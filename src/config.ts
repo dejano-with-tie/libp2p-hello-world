@@ -7,6 +7,7 @@ import {NatType} from "./nat";
 import {NOISE} from "libp2p-noise";
 import Bootstrap from "libp2p-bootstrap";
 import Gossipsub from "libp2p-gossipsub";
+import {injectable} from "tsyringe";
 
 const PubsubPeerDiscovery = require('libp2p-pubsub-peer-discovery')
 
@@ -126,7 +127,6 @@ const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
     fileConfig.db = builder.db || fileConfig.db;
     fileConfig.peerIdFilePath = builder.peerIdFilePath || fileConfig.peerIdFilePath;
 
-    logger.debug(`File config: ${JSON.stringify(fileConfig, null, 4)}`);
     return fileConfig;
 };
 
@@ -137,7 +137,6 @@ const loadFile = (configFilePath: string): FileConfig => {
 async function peerId(peerIdFilePath: string): Promise<PeerId> {
     if (fs.existsSync(peerIdFilePath)) {
         const text = JSON.parse(fs.readFileSync(peerIdFilePath).toString());
-        console.log(text);
         return await PeerId.createFromJSON(text);
     }
 

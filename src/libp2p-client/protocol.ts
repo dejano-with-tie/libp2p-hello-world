@@ -6,19 +6,20 @@ import json from 'multiformats/codecs/json'
 import raw from 'multiformats/codecs/raw'
 import {sha256} from 'multiformats/hashes/sha2'
 import path from 'path';
-import logger from "./logger";
+import logger from "../logger";
 import pipe from "it-pipe";
 import first from 'it-first';
 import PeerId from "peer-id";
 import lp, {varintDecode} from 'it-length-prefixed';
-import {Db} from "./models";
+import {Db} from "../models";
 import Multiaddr from "multiaddr";
-import File from "./models/file.model";
+import File from "../models/file.model";
 import fileSize from "filesize";
 import {EOL} from "os";
-import Download from "./models/download.model";
+import Download from "../models/download.model";
 import EventEmitter from "events";
 import WritableStream = NodeJS.WritableStream;
+import {CidDomain} from "../domain/cid.domain";
 
 const afterBreak = false;
 const offset = 160366592;
@@ -54,7 +55,7 @@ const {publicAddressesFirst} = require('libp2p-utils/src/address-sort');
 const protons = require('protons');
 const PROTOCOL = '/libp2p/file/1.0.0'
 
-interface FileInfoResponse {
+export interface FileInfoResponse {
     type: number,
     info: FileInfo[]
 }
@@ -120,10 +121,11 @@ export class Protocol {
         }
     }
 
-    private static async createCidFromName(name: string): Promise<CID[]> {
-        const bytes = json.encode({name: name});
-        const hash = await sha256.digest(bytes);
-        return [new CID(1, json.code, hash.bytes)];
+    private static async createCidFromName(name: string): Promise<CidDomain> {
+        return new CidDomain(name).digest()
+        // const bytes = json.encode({name: name});
+        // const hash = await sha256.digest(bytes);
+        // return [new CID(1, json.code, hash.bytes)];
     }
 
     private static async details(filePath: string) {
@@ -136,7 +138,7 @@ export class Protocol {
 
         const extName = path.extname(filePath);
         const name = path.basename(filePath, extName);
-        const [cid] = await Protocol.createCidFromName(name);
+        const cid = await Protocol.createCidFromName(name);
 
         const bytes = raw.encode(content);
         const hash = await sha256.digest(bytes);
@@ -182,16 +184,24 @@ export class Protocol {
         file.mime = 'TODO';
         file.hashes = [hash];
         await this.db.fileRepository.save(file);
-        await this.node.contentRouting.provide(details.cid);
+        await this.node.contentRouting.provide(details.cid.value);
         logger.info(`published [${details.cid.toString()}] ${filePath}`);
     }
 
 
     async find(name: string): Promise<FindFileResults> {
-        const [cid] = await Protocol.createCidFromName(name);
+        const cid = await Protocol.createCidFromName(name);
         logger.info(`searching for [${cid.toString()}]`);
 
         const results: FindFileResults = new Map();
+
+        this.node.connections.forEach((c: any[]) => {
+            console.log(c);
+        })
+
+        this.node.peerStore.peers.forEach((p: any) => {
+            console.log(p);
+        });
 
         // TODO: not one
         const local = await this.db.hashRepository.findOneByCid(cid.toString());
@@ -214,7 +224,7 @@ export class Protocol {
 
         let providers = undefined;
         try {
-            providers = await this.node.contentRouting.findProviders(cid);
+            providers = await this.node.contentRouting.findProviders(cid.value, {timeout: 10000});
         } catch (e) {
             logger.error(e);
             return results;
@@ -242,6 +252,7 @@ export class Protocol {
                     [request],
                     // Write to the stream, and pass its output to the next function
                     stream,
+                    lp.decode(),
                     // Sink function
                     async (source: any) => {
                         const buf: any = await first(source)
@@ -364,7 +375,7 @@ export class Protocol {
     }
 
     async handleInfo(request: any): Promise<FileInfoResponse | undefined> {
-        const [cid] = await Protocol.createCidFromName(request.info.name);
+        const cid = await Protocol.createCidFromName(request.info.name);
         logger.debug(`searching for [${cid.toString()}]`);
         const hashes = await this.db.hashRepository.findOneByCid(cid.toString());
         if (!hashes?.files?.length) {
