@@ -6,8 +6,8 @@ export class FileDomain {
   checksum: string;
   size: number;
   mime: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   provider: PeerDomain;
 
   constructor(id: number, path: string, checksum: string, size: number, mime: string, createdAt: string, updatedAt: string, provider: PeerDomain) {

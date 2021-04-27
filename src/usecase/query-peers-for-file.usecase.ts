@@ -1,11 +1,11 @@
 import {ProtocolService} from "../libp2p-client/protocol.service";
-import {FindProviderRequest} from "../gateway/controller/dto/find-provider.request";
+import {FindProviderRequest} from "../gateway/http/controller/dto/find-provider.request";
 import {CidDomain} from "../domain/cid.domain";
 import {PeerDomain} from "../domain/libp2p.domain";
 import {singleton} from "tsyringe";
 
 @singleton()
-export class FindFilesOnProviderUseCase {
+export class QueryPeersForFileUsecase {
   constructor(
     private protocolService: ProtocolService
   ) {

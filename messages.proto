@@ -2,11 +2,13 @@ message Request {
   enum Type {
     INFO = 1;
     DOWNLOAD = 2;
+    INFO_SINGLE = 3;
   }
 
   required Type type = 1;
   optional FileInfoRequest info = 2;
   optional FileDownload download = 3;
+  optional FileInfoSingleRequest singleInfo = 4;
 }
 
 message FileDownload {
@@ -17,16 +19,22 @@ message FileInfoRequest {
     required string name = 1;
 }
 
+message FileInfoSingleRequest {
+    required int64 id = 1;
+}
+
 // response
 message Response {
   enum Type {
     INFO = 1;
     DOWNLOAD = 2;
+    INFO_SINGLE = 3;
   }
 
   required Type type = 1;
   repeated FileInfo info = 2;
   optional FileDownload download = 3;
+  optional FileInfo singleInfo = 4;
 }
 
 message FileInfo {

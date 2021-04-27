@@ -1,0 +1,38 @@
+message Message {
+  enum MessageType {
+    FIND_FILE = 1;
+    GET_FILE = 2;
+    GET_FILE_CONTENT = 3;
+  }
+
+  message File {
+    required int64 id = 1;
+    required string path = 2;
+    required int64 size = 3;
+    required string mime = 4;
+    required string checksum = 5;
+    required string createdAt = 6;
+    required string updatedAt = 7;
+  }
+
+  required MessageType type = 1;
+  // used to query the remote peer by file name (cid)
+  // FIND_FILE
+  optional bytes query = 2;
+
+  // Used to query the remote peer by file id
+  // GET_FILE, GET_FILE_CONTENT
+  optional int64 fileId = 3;
+
+  // Used to return file(s) metadata
+  // FIND_FILE, GET_FILE
+  repeated File files = 4;
+
+  // Used to return raw bytes of a file
+  // GET_FILE_CONTENT
+  optional bytes content = 5;
+
+  // Used to return error
+  // FIND_FILE, GET_FILE, GET_FILE_CONTENT
+  optional bytes error = 6;
+}

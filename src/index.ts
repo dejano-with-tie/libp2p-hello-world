@@ -5,8 +5,8 @@ import {Node} from './node';
 import {run as gateway} from "./gateway";
 import {Db} from './models';
 import "reflect-metadata";
-import {container, instanceCachingFactory} from "tsyringe";
-import {ConnectionManager, useContainer} from "typeorm";
+import {container} from "tsyringe";
+import Libp2p from "libp2p";
 
 
 const main = async (runMultiple: boolean) => {
@@ -44,17 +44,10 @@ const singleNode = async () => {
   const natType = await discover();
   const config = await libp2pConfig(builderFromEnv().build(), natType);
 
+  // NOTE: container.register is used in src/index, src/models/index (repos) and src/gateway/io/index (socket)
   // @ts-ignore
   container.register<Config>(Config, {useValue: config});
   container.register<Config>("Config", {useValue: config});
-  // Register TypeORM's connection manager as singleton
-// TypeORM does not register anything itself with TSyringe and therefore would get a new ConnectionManager every time
-//   container.register<ConnectionManager>(ConnectionManager, {useFactory: instanceCachingFactory(() => new ConnectionManager())});
-// // configure TypeORM to use a dependency injection container
-//   useContainer(
-//     // wrapper because TypeORM expects `get` function from IoC container
-//     {get: Db => container.resolve(Db as any)},
-//   );
 
   const db = await Db.createAndConnect(config.file.db);
   // @ts-ignore
@@ -62,7 +55,12 @@ const singleNode = async () => {
   container.register<Db>("Db", {useValue: db});
 
   const node = await Node.run(config, db);
-  container.register<Node>("Node", {useValue: node});
+
+  // const protocolClient = new ProtocolClient(node.libp2p);
+  container.register<Libp2p>(Libp2p, {useValue: node.libp2p});
+  container.register<Node>('Node', {useValue: node});
+  // container.register(ProtocolClient, {useValue: protocolClient});
+  // container.register(ProtocolService, {useValue: new ProtocolService(node.libp2p, protocolClient)});
 
   gateway(node);
 }

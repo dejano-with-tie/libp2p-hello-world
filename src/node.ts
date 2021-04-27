@@ -48,10 +48,6 @@ export class Node {
     const node = new Node(config, db);
     node.libp2p = await Libp2p.create(node.config.libp2p);
     await node.start();
-    const protocolClient = new ProtocolClient(node.libp2p);
-    container.register<Node>('Node', {useValue: node});
-    container.register(ProtocolClient, {useValue: protocolClient});
-    container.register(ProtocolService, {useValue: new ProtocolService(node.libp2p, protocolClient)});
 
     node.protocol = new Protocol(node.libp2p, db, node.downloadEvent);
     logger.info(`Node ID: ${node.libp2p.peerId.toB58String()}`);

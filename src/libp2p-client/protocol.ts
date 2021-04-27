@@ -60,7 +60,12 @@ export interface FileInfoResponse {
     info: FileInfo[]
 }
 
-interface FileInfo {
+export interface FileInfoSingleResponse {
+    type: number,
+    singleInfo: FileInfo
+}
+
+export interface FileInfo {
     id: number;
     path: string;
     mime: string;
@@ -87,7 +92,7 @@ export class Protocol {
         this.downloadEvent = downloadEvent
         this.handleInfo = this.handleInfo.bind(this);
         this.handle = this.handle.bind(this);
-        this.node.handle(PROTOCOL, this.handle);
+        // this.node.handle(PROTOCOL, this.handle);
         this.downloadEvent.on('pause', ({downloadId}: ({ downloadId: number })) => {
             if (this.downloads.has(downloadId)) {
                 const dl = this.downloads.get(downloadId);

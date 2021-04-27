@@ -1,6 +1,6 @@
 import winston from "winston";
 import {Format} from "logform";
-import {isProd} from "./util";
+import {isProd} from "./utils";
 
 const formats: Format[] = [
     winston.format.simple(),

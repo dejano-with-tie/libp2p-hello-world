@@ -1,4 +1,4 @@
-import {FindProviderRequest} from "../gateway/controller/dto/find-provider.request";
+import {FindProviderRequest} from "../gateway/http/controller/dto/find-provider.request";
 import {inject, singleton} from "tsyringe";
 import {Config} from "../config";
 import {CidDomain} from "../domain/cid.domain";
@@ -10,7 +10,7 @@ import {ProtocolService} from "../libp2p-client/protocol.service";
 import {FileDomain} from "../domain/file.domain";
 
 @singleton()
-export class FindFilesUseCase {
+export class FindFilesUsecase {
 
   constructor(
     @inject("Config") private config: Config,

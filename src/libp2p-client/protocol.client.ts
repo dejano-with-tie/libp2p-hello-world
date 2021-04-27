@@ -1,13 +1,18 @@
 import fs from "fs";
 import Libp2p from "libp2p";
 import pipe from "it-pipe";
-import lp from "it-length-prefixed";
-import {FileInfoResponse} from "./protocol";
-import first from 'it-first';
+import * as lengthPrefixed from "it-length-prefixed";
 import {FileDomain} from "../domain/file.domain";
 import {CidDomain} from "../domain/cid.domain";
 import {PeerDomain} from "../domain/libp2p.domain";
 import logger from "../logger";
+import {ErrorCode} from "../gateway/exception/error.codes";
+import PeerId from "peer-id";
+import {singleton} from "tsyringe";
+import {Message} from "./proto/proto";
+import {Rpc} from "./rpc";
+import {oneOnly} from "../utils";
+import map from "it-map";
 
 const filter = require('it-filter')
 
@@ -15,12 +20,16 @@ const protobuf = require('protocol-buffers')
 // pass a proto file as a buffer/string or pass a parsed protobuf-schema object
 const {Request, Response, DownloadResponse} = protobuf(fs.readFileSync('./messages.proto'))
 
+@singleton()
 export class ProtocolClient {
 
-  private node: Libp2p;
+  public downloadsInProgress = new Map<number, any>();
+  private readonly _protocol = '/libp2p/enutt/1.0.0';
 
-  constructor(node: Libp2p) {
+  constructor(private node: Libp2p, private rpc: Rpc) {
     this.node = node;
+    this.handleIncoming = this.handleIncoming.bind(this);
+    this.node.handle(this._protocol, this.handleIncoming);
   }
 
   /**
@@ -41,29 +50,96 @@ export class ProtocolClient {
   }
 
   /**
-   * Dials remote peer to find out details about given key
+   * Dials remote peer to find files for given key
    *
    * @async
-   * @param key file
-   * @param provider remote peer
-   * @returns FileDomain[] details
+   * @param key (file name)
+   * @param peer
+   * @returns FileDomain[] files
    */
-  public async findFiles(key: CidDomain, provider: PeerDomain): Promise<FileDomain[]> {
-    logger.info(`Searching for file '${key.name}' on provider '${provider.id.toB58String()}'`);
+  public async findFiles(key: CidDomain, peer: PeerDomain): Promise<FileDomain[]> {
+    logger.info(`Searching for file '${key.name}' on provider '${peer.id.toB58String()}'`);
     // await new Promise(resolve => setTimeout(resolve, this.randomIntFromInterval(1_000, 20_000)));
-    const {stream} = await this.node.dialProtocol(provider.id, '/libp2p/file/1.0.0');
-    const request = Request.encode({
-      type: Request.Type.INFO,
-      info: {name: key.name}
+
+    const message = Message.findFiles(key.name);
+    return (await this.sendMessage(peer.id, message)).files.map(file => {
+      return file.toDomain(peer);
     });
-    const files: FileInfoResponse = await this.write(request, stream);
-    return files.info.map(file => {
-      return new FileDomain(file.id, file.path, file.checksum, file.size, file.mime, file.createdAt, file.updatedAt, {
-        id: provider.id,
-        multiaddrs: provider.multiaddrs,
-        isLocal: false,
-      });
+  }
+
+  /**
+   * Dials remote peer to fetch file details
+   * @param peer
+   * @param fileId
+   * @returns FileDomain file
+   */
+  public async getFile(peer: PeerDomain, fileId: number): Promise<FileDomain> {
+    logger.info(`Searching for file '${fileId}' on provider '${peer.id.toB58String()}'`);
+    const message = Message.getFile(fileId);
+    const [first] = (await this.sendMessage(peer.id, message)).files.map(file => {
+      return file.toDomain(peer);
     });
+
+    return first;
+  }
+
+  /**
+   * Dials remote peer to get raw bytes of given file id
+   * @param peer
+   * @param fileId
+   * @param processId
+   * @return Message containing raw bytes
+   */
+  public async* getFileContent(peer: PeerDomain, fileId: number, processId: number): AsyncIterable<Message> {
+    this.downloadsInProgress.set(processId, {});
+    // note: dial protocol trhows exception
+    const stream = (await this.node?.dialProtocol(peer.id, this._protocol)).stream;
+    try {
+      return yield* this.rpc.sendMessage(Message.getFileContent(fileId), stream);
+    } catch (e) {
+      console.log(e);
+      if (e.code == ErrorCode.DOWNLOAD_PAUSE.toString()) {
+        console.log(ErrorCode.DOWNLOAD_PAUSE);
+      }
+    } finally {
+      // ack to close stream
+      await pipe([], stream);
+    }
+  }
+
+  private async sendMessage(peer: PeerId, message: Message): Promise<Message> {
+    logger.info(`Sending message ${message.type}; to ${peer.toB58String()}`);
+    // await new Promise(resolve => setTimeout(resolve, this.randomIntFromInterval(1_000, 20_000)));
+
+    const {stream} = await this.node.dialProtocol(peer, this._protocol);
+    const response = await oneOnly<Message>(this.rpc.sendMessage(message, stream));
+    if (response.error) {
+      // TODO throw or let it be?
+      logger.error(`Got error message; ${response.error}`);
+    }
+    return response;
+  }
+
+  private async handleIncoming({connection, stream}: ({ connection: any, stream: any })) {
+    const peerId = connection.remotePeer;
+    logger.info('handle incoming message from: %s', peerId.toB58String())
+    const that = this;
+
+    await pipe(
+      stream,
+      lengthPrefixed.decode(),
+      // Tbh this looks overly complicated
+      // Are there really chunks of source or I could grab the first one?
+      (source: AsyncIterable<Uint8Array>) => (async function* () {
+        for await (const chunk of source) {
+          const message = Message.deserialize(chunk.slice());
+          const response = await that.rpc.handleMessage(peerId, message);
+          yield* map(response, (chunk) => chunk.serialize());
+        }
+      })(),
+      lengthPrefixed.encode(),
+      stream
+    )
   }
 
   private onlyRemote() {
@@ -72,27 +148,4 @@ export class ProtocolClient {
     };
   }
 
-  private async write(request: any, stream: any) {
-    return await pipe(
-      // Source data
-      [request],
-      // Write to the stream, and pass its output to the next function
-      stream,
-      lp.decode(),
-      // Sink function
-      async (source: any) => {
-        const buf: any = await first(source)
-        // TODO: What if empty?
-        if (buf) {
-          return Response.decode(buf.slice());
-        }
-      }
-    );
-  }
-
-  private randomIntFromInterval(min: number, max: number) {
-    const interval = Math.floor(Math.random() * (max - min + 1) + min);
-    logger.info(`waiting: ${interval}`);
-    return interval;
-  }
 }

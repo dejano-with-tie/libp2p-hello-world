@@ -6,3 +6,11 @@ export interface PeerDomain {
   isLocal: boolean;
   multiaddrs: Multiaddr[];
 }
+
+export function remotePeer(peerId: string) {
+  return {
+    id: PeerId.createFromB58String(peerId),
+    isLocal: false,
+    multiaddrs: []
+  }
+}

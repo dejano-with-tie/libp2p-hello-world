@@ -1,8 +1,10 @@
 import {Socket} from "socket.io";
 import {container} from "tsyringe";
 import {SearchIoHandler} from "./search.io-handler";
-import {FindFilesUseCase} from "../../usecase/find-files-use.case";
+import {FindFilesUsecase} from "../../usecase/find-files.usecase";
 import logger from "../../logger";
+import {DownloadIoHandler} from "./download.io-handler";
+import {DownloadFileFromPeerUsecase} from "../../usecase/download-file-from-peer.usecase";
 
 export interface IoError {
   id: string;
@@ -23,7 +25,9 @@ export const wrapIoEvent = (id: string, content: any) => ({
   id: id
 })
 
-const registerIoHandlers = (socket: Socket) => {
+export const registerIoHandlers = (socket: Socket) => {
+  container.register<Socket>(Socket, {useValue: socket});
+
   logger.info('socket connected');
   const register = (id: string, handler: any) => {
     socket.on(id, async (event) => {
@@ -31,11 +35,14 @@ const registerIoHandlers = (socket: Socket) => {
     });
   }
 
-  const searchHandler = new SearchIoHandler(socket, container.resolve(FindFilesUseCase));
+  const searchIoHandler = container.resolve(SearchIoHandler);
+  const downloadIoHandler = container.resolve(DownloadIoHandler);
 
-  register('search', searchHandler.search.bind(searchHandler));
-  // register('search:providers', searchHandler.providers.bind(searchHandler));
-  // register('search:files', searchHandler.files.bind(searchHandler));
+  register('search', searchIoHandler.search.bind(searchIoHandler));
+  // register('download', downloadIoHandler.download.bind(searchIoHandler));
+
+  setTimeout(() => {
+    socket.emit('test', 'hello');
+  }, 2000);
+
 }
-
-export default registerIoHandlers;
