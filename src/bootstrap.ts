@@ -11,6 +11,7 @@ export async function bootstrap(config: Config, fileService: FileService): Promi
 
 
   const node = await Libp2p.create(config.libp2p);
+  await node.start();
   container.register<Libp2p>(Libp2p, {useValue: node});
 
   logger.info(`Node ID: ${node.peerId.toB58String()}`);
