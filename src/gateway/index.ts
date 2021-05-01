@@ -1,6 +1,5 @@
 import express from 'express';
 import * as http from 'http';
-import {Node} from '../node';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import logger from '../logger';
@@ -8,14 +7,9 @@ import {Server} from 'socket.io';
 import {ErrorHandler} from "./exception/error.handler";
 import {registerRoutes} from './http';
 import {registerIoHandlers} from "./io";
+import {Config} from "../config";
 
-// TODO: remove
-const context = (node: Node) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  res.locals.node = node;
-  next();
-};
-
-export const run = (node: Node) => {
+export const run = (config: Config) => {
   const app: express.Application = express();
   const server: http.Server = http.createServer(app);
   const io: Server = require('socket.io')(server, {
@@ -26,8 +20,6 @@ export const run = (node: Node) => {
     }
   });
   io.on('connection', registerIoHandlers);
-
-  app.use(context(node));
 
   app.use(cors());
   app.use(require('morgan')('dev'));
@@ -43,7 +35,7 @@ export const run = (node: Node) => {
   app.use(ErrorHandler.notFound);
   app.use(ErrorHandler.general);
 
-  server.listen(node.config.file.gateway.port, () => {
-    logger.info(`API Gateway available at http://localhost:${node.config.file.gateway.port}`);
+  server.listen(config.file.gateway.port, () => {
+    logger.info(`API Gateway available at http://localhost:${config.file.gateway.port}`);
   });
 }

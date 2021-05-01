@@ -2,10 +2,10 @@ import logger from "../../../logger";
 import fs from "fs";
 import PeerId from "peer-id";
 import {File, Message} from "../../proto/proto";
-import {CidDomain} from "../../../domain/cid.domain";
 import {error, ErrorCode} from "../../../gateway/exception/error.codes";
 import {HashRepository} from "../../../repository/hash.repository";
 import {singleton} from "tsyringe";
+import {CidDomain} from "../../model";
 
 @singleton()
 export class FindFileHandler {

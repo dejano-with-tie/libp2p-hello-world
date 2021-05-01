@@ -24,15 +24,19 @@ message Message {
   // GET_FILE, GET_FILE_CONTENT
   optional int64 fileId = 3;
 
+  // From where to start streaming file content
+  // GET_FILE_CONTENT
+  optional int64 offset = 4;
+
   // Used to return file(s) metadata
   // FIND_FILE, GET_FILE
-  repeated File files = 4;
+  repeated File files = 5;
 
   // Used to return raw bytes of a file
   // GET_FILE_CONTENT
-  optional bytes content = 5;
+  optional bytes content = 6;
 
   // Used to return error
   // FIND_FILE, GET_FILE, GET_FILE_CONTENT
-  optional bytes error = 6;
+  optional bytes error = 7;
 }

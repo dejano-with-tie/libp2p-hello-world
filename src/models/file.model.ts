@@ -1,8 +1,8 @@
 import Hash from "./hash.model";
-import {Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn} from "typeorm";
+import {Column, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn} from "typeorm";
 import Auditing from "./auditing.model";
-import * as domain from '../domain/file.domain';
-import {PeerDomain} from "../domain/libp2p.domain";
+import Directory from "./directory.model";
+import path from "path";
 
 @Entity()
 export default class File extends Auditing {
@@ -29,14 +29,27 @@ export default class File extends Auditing {
 
   @Column({nullable: false})
     // @ts-ignore
+  ext: string
+
+  @Column({nullable: false})
+    // @ts-ignore
   checksum: string
+
+  @ManyToOne(() => Directory, directory => directory.files, {eager: true})
+    // @ts-ignore
+  directory: Directory;
 
   @ManyToMany(() => Hash, hash => hash.files, {cascade: true})
   @JoinTable()
     // @ts-ignore
   hashes: Hash[];
 
-  public toDomain(provider: PeerDomain) {
-    return new domain.FileDomain(this.id, this.path, this.checksum, this.size, this.mime, this.createdAt.toString(), this.updatedAt.toString(), provider);
+  public isHealthy(): boolean {
+    return this.pathIsValid;
+  }
+
+  public advertisedPath() {
+    const pathWithoutSharedDir = path.relative(this.directory.path, this.path);
+    return path.join(this.directory.advertisedPath, pathWithoutSharedDir)
   }
 }

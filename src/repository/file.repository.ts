@@ -5,18 +5,22 @@ import {FindManyOptions} from "typeorm/find-options/FindManyOptions";
 @EntityRepository(File)
 export class FileRepository extends Repository<File> {
 
-    findAllValid(options?: FindManyOptions<File>): Promise<File[]> {
-        return this.find({...{where: {
-            pathIsValid: true
-        }}, ...options});
-    }
+  findAllValid(options?: FindManyOptions<File>): Promise<File[]> {
+    return this.find({
+      ...{
+        where: {
+          pathIsValid: true
+        }
+      }, ...options
+    });
+  }
 
-    findOneByChecksum(checksum: string): Promise<File | undefined> {
-        return this.findOne({checksum});
-    }
+  findOneByChecksum(checksum: string): Promise<File | undefined> {
+    return this.findOne({checksum});
+  }
 
-    findOneByPath(path: string): Promise<File | undefined> {
-        return this.findOne({path});
-    }
+  findOneByPath(path: string): Promise<File | undefined> {
+    return this.findOne({path});
+  }
 
 }

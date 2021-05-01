@@ -24,6 +24,7 @@ export class Rpc {
 
       yield* response;
     } catch (e) {
+      console.error(e);
       const errResponse = new Message(message.type);
       errResponse.error = e.toString();
       yield errResponse;

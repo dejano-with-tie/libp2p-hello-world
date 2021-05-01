@@ -1,32 +1,14 @@
 import {Socket} from "socket.io";
 import {container} from "tsyringe";
 import {SearchIoHandler} from "./search.io-handler";
-import {FindFilesUsecase} from "../../usecase/find-files.usecase";
 import logger from "../../logger";
 import {DownloadIoHandler} from "./download.io-handler";
-import {DownloadFileFromPeerUsecase} from "../../usecase/download-file-from-peer.usecase";
+import {wrapIoEvent} from "./io-handler";
 
-export interface IoError {
-  id: string;
-  message: string;
-}
-
-export interface IoEvent<T> {
-  id: string;
-  content: T;
-  done: boolean;
-  error: IoError[];
-}
-
-export const wrapIoEvent = (id: string, content: any) => ({
-  content,
-  done: false,
-  error: [],
-  id: id
-})
-
+const sockets: Socket[] = [];
+container.register<Socket[]>('Socket[]', {useValue: sockets});
 export const registerIoHandlers = (socket: Socket) => {
-  container.register<Socket>(Socket, {useValue: socket});
+  sockets.push(socket);
 
   logger.info('socket connected');
   const register = (id: string, handler: any) => {

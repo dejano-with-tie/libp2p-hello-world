@@ -1,12 +1,13 @@
+import "reflect-metadata";
 import {Builder} from "builder-pattern";
 import {Config, defaultConfigBuilder, libp2pConfig} from "./config";
 import {discover} from "./nat";
-import {Node} from './node';
 import {run as gateway} from "./gateway";
 import {Db} from './models';
-import "reflect-metadata";
 import {container} from "tsyringe";
 import Libp2p from "libp2p";
+import {bootstrap} from "./bootstrap";
+import {FileService} from "./service/file.service";
 
 
 const main = async (runMultiple: boolean) => {
@@ -35,8 +36,8 @@ const multiple = async (n: number) => {
       .build(), natType);
 
     const db = await Db.createAndConnect(config.file.db);
-    const node = await Node.run(config, db);
-    gateway(node);
+    const node = await bootstrap(config, container.resolve<FileService>(FileService));
+    gateway(config);
   }
 }
 
@@ -54,15 +55,15 @@ const singleNode = async () => {
   container.register<Db>(Db, {useValue: db});
   container.register<Db>("Db", {useValue: db});
 
-  const node = await Node.run(config, db);
+  // const node = await Node.run(config, db);
+  const node = await bootstrap(config, container.resolve<FileService>(FileService));
 
   // const protocolClient = new ProtocolClient(node.libp2p);
-  container.register<Libp2p>(Libp2p, {useValue: node.libp2p});
-  container.register<Node>('Node', {useValue: node});
+
   // container.register(ProtocolClient, {useValue: protocolClient});
   // container.register(ProtocolService, {useValue: new ProtocolService(node.libp2p, protocolClient)});
 
-  gateway(node);
+  gateway(config);
 }
 
 function builderFromEnv() {

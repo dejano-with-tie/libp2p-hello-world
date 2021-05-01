@@ -1,28 +1,28 @@
 import {Socket} from "socket.io";
-import {IoHandler} from "./io-handler";
-import {IoEvent, wrapIoEvent} from "./index";
-import {DownloadFileFromPeerUsecase} from "../../usecase/download-file-from-peer.usecase";
+import {IoEvent, IoHandler} from "./io-handler";
 import {delay, inject, injectable} from "tsyringe";
+import {DownloadService} from "../../service/download.service";
 
 /**
  * Socket.io handler for all events starting with 'download*'
  */
 @injectable()
 export class DownloadIoHandler extends IoHandler {
-  constructor(@inject(delay(() => Socket)) socket: Socket, private downloadFileFromPeerUsecase: DownloadFileFromPeerUsecase) {
-    super(socket);
+  constructor(
+    @inject("Socket[]") sockets: Socket[],
+    @inject(delay(() => DownloadService)) private downloadService: DownloadService
+  ) {
+    super(sockets);
   }
 
   async progress(event: IoEvent<number>): Promise<void> {
-    const download = await this.downloadFileFromPeerUsecase.execute(event.content);
+    const download = await this.downloadService.download(event.content);
     for await(const progress of download) {
       console.log(progress);
-      if (this.socket.emit) {
-        this.socket.emit(event.id, wrapIoEvent(event.id, {progress}));
-      }
+      this.emit(event.id, progress);
     }
 
-    this.socket.emit(event.id, {...event, ...{done: true}});
+    this.emit(event.id, [], true);
   }
 
   async download(event: IoEvent<any>): Promise<void> {

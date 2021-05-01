@@ -11,7 +11,6 @@ export class DownloadRepository extends Repository<Download> {
   findOneByChecksumAndInProgress(remoteFileChecksum: string): Promise<Download | undefined> {
     return this.findOne({
       where: {
-        pathIsValid: true,
         remoteFileChecksum,
         status: Not(DownloadStatus.COMPLETED)
       }

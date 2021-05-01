@@ -19,7 +19,7 @@ export class GetFileHandler {
     }
 
     const file = await this.fileRepository.findOne(message.fileId);
-    if (!file || !file.pathIsValid) {
+    if (!file || !file.isHealthy()) {
       throw error(ErrorCode.RESOURCE_NOT_FOUND, {fileId: message.fileId});
     }
 

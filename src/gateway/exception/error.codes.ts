@@ -1,4 +1,5 @@
 import logger from "../../logger";
+import {getEnumKeyByEnumValue} from "../../utils";
 
 const errcode = require('err-code')
 
@@ -17,11 +18,6 @@ export enum ErrorCode {
 }
 
 // TODO: Need (http) status codes
-
-function getEnumKeyByEnumValue<T extends { [index: string]: string }>(myEnum: T, enumValue: string): keyof T | null {
-  let keys = Object.keys(myEnum).filter(x => myEnum[x] == enumValue);
-  return keys.length > 0 ? keys[0] : null;
-}
 
 export const error = (error: ErrorCode, context?: any) => {
   if (context) {

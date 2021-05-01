@@ -1,23 +1,16 @@
 // @ts-nocheck
 import {Column, Entity, PrimaryGeneratedColumn,} from "typeorm";
 import Auditing from "./auditing.model";
-import {PeerDomain} from "../domain/libp2p.domain";
-import {DownloadDomain} from "../domain/download.domain";
-import {FileDomain} from "../domain/file.domain";
-import PeerId from "peer-id";
-import {DownloadStatusDomain} from "../domain/download-status.domain";
 
 export enum DownloadStatus {
-  PENDING,
-  INTEGRITY_VALID,
-  INTEGRITY_FAILED,
-  InProgress,
-  Paused,
-  Stopped,
-  Failed,
-  CompletedUnverified,
-  COMPLETED,
-  CompletedInvalid
+  PENDING = "PENDING",
+  IN_PROGRESS = "IN_PROGRESS",
+  PAUSED = "PAUSED",
+  COMPLETED_UNVERIFIED = "COMPLETED_UNVERIFIED",
+  COMPLETED = "COMPLETED",
+  COMPLETED_INTEGRITY_FAILED = "COMPLETED_INTEGRITY_FAILED",
+  FAILED = "FAILED",
+  DELETED = "DELETED",
 }
 
 @Entity()
@@ -44,11 +37,11 @@ export default class Download extends Auditing {
     nullable: false,
     default: 0
   })
-  progress: number
+  offset: number
 
   @Column({
     nullable: false,
-    type: 'int',
+    type: 'text',
     default: DownloadStatus.PENDING
   })
   status: DownloadStatus
@@ -60,7 +53,11 @@ export default class Download extends Auditing {
   })
   downloadPath: string
 
-  public integrityIsValid() {
-    this.status = DownloadStatus.INTEGRITY_VALID;
+  public inProgress() {
+    this.status = DownloadStatus.IN_PROGRESS;
+  }
+
+  public progress() {
+    return Math.floor((this.offset / this.remoteFileSize) * 100)
   }
 }

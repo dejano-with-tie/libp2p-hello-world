@@ -13,7 +13,7 @@ export function toEntity(payload: DownloadRequest): Download {
   }
 
   const model = new Download();
-  model.progress = 0;
+  model.offset = 0;
   model.remotePeerId = payload.remotePeerId;
   model.remoteFileId = payload.remoteFileId;
   model.status = DownloadStatus.PENDING;

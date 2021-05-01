@@ -17,6 +17,11 @@ const Mplex = require('libp2p-mplex');
 const KadDHT = require('libp2p-kad-dht');
 const MulticastDNS = require('libp2p-mdns');
 
+export interface SharedDir {
+  path: string;
+  advertisedPath: string;
+}
+
 export interface ConfigBuilder {
   alias?: string;
   db?: string;
@@ -25,14 +30,14 @@ export interface ConfigBuilder {
   filePath: string;
   peerIdFilePath: string;
   downloadDirPath: string;
-  shareDirPath: string;
+  sharedDirs: SharedDir[];
 }
 
 export const defaultConfigBuilder: ConfigBuilder = {
   filePath: './config/config.json',
   peerIdFilePath: './config/id.json',
   downloadDirPath: 'libp2p/downloads',
-  shareDirPath: 'libp2p/share'
+  sharedDirs: [{path: 'libp2p/share', advertisedPath: '/'}]
 };
 
 export interface Config {
@@ -48,7 +53,7 @@ export interface FileConfig {
   gateway: Gateway;
   peerIdFilePath: string;
   downloadDirPath: string;
-  shareDirPath: string;
+  shareDirs: SharedDir[];
 }
 
 interface Network {
@@ -63,17 +68,25 @@ interface Gateway {
 const os = require('os');
 
 async function createDirs(fileConfig: FileConfig) {
-  for (const dir of [fileConfig.downloadDirPath, fileConfig.shareDirPath]) {
-    const dirPath = path.join(os.homedir(), dir);
-    await mkdirp(dirPath);
-    logger.debug(dirPath);
+  for (const dir of [fileConfig.downloadDirPath, ...fileConfig.shareDirs.map(d => d.path).flat()]) {
+    await mkdirp(dir);
+    logger.debug(dir);
   }
+}
+
+function updateDirPathsRelativeToHomedir(fileConfig: FileConfig) {
+  fileConfig.downloadDirPath = path.join(os.homedir(), fileConfig.downloadDirPath);
+  fileConfig.shareDirs = fileConfig.shareDirs.map(dir => ({
+    path: path.join(os.homedir(), dir.path),
+    advertisedPath: dir.advertisedPath
+  }));
 }
 
 export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Promise<Config> => {
   const fileConfig: FileConfig = await from(builder);
   const peer = await peerId(builder.peerIdFilePath);
 
+  updateDirPathsRelativeToHomedir(fileConfig);
   await createDirs(fileConfig);
 
   const libp2pConfig = {
@@ -146,7 +159,7 @@ const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
   fileConfig.db = builder.db || fileConfig.db;
   fileConfig.peerIdFilePath = builder.peerIdFilePath || fileConfig.peerIdFilePath;
   fileConfig.downloadDirPath = builder.downloadDirPath || fileConfig.downloadDirPath;
-  fileConfig.shareDirPath = builder.shareDirPath || fileConfig.shareDirPath;
+  fileConfig.shareDirs = builder.sharedDirs || fileConfig.shareDirs;
 
   return fileConfig;
 };

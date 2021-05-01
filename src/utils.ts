@@ -42,14 +42,15 @@ export async function oneOnly<T>(asyncIterator: AsyncIterable<any>): Promise<T> 
   return first;
 }
 
-export function isGenerator(fn: any) {
-  return fn.constructor.name === 'GeneratorFunction';
-}
-
 export function isAsyncIterator(obj: any) {
   // checks for null and undefined
   if (obj == null) {
     return false;
   }
   return typeof obj[Symbol.asyncIterator] === 'function';
+}
+
+export function getEnumKeyByEnumValue<T extends { [index: string]: string }>(myEnum: T, enumValue: string): keyof T | null {
+  let keys = Object.keys(myEnum).filter(x => myEnum[x] == enumValue);
+  return keys.length > 0 ? keys[0] : null;
 }

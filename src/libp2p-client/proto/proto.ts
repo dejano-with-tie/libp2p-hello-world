@@ -1,6 +1,6 @@
 import fs from "fs";
-import {PeerDomain} from "../../domain/libp2p.domain";
-import {FileDomain} from "../../domain/file.domain";
+import {PeerDomain} from "../model";
+import {FileResponse} from "../../gateway/http/controller/dto/file.response";
 
 const protobuf = require('protocol-buffers');
 const pbm = protobuf(fs.readFileSync('./src/libp2p-client/proto/messages.proto'));
@@ -42,13 +42,6 @@ export class File {
     this.updatedAt = updatedAt;
   }
 
-  public toDomain(peer: PeerDomain) {
-    return new FileDomain(this.id, this.path, this.checksum, this.size, this.mime, this.createdAt, this.updatedAt, {
-      id: peer.id,
-      multiaddrs: peer.multiaddrs,
-      isLocal: false,
-    });
-  }
 }
 
 export class Message {
@@ -57,6 +50,7 @@ export class Message {
   public type: MessageType;
   public query?: string;
   public fileId?: number;
+  public offset?: number;
   public files: File[] = [];
   public content?: Uint8Array;
   public error?: string;
@@ -78,9 +72,10 @@ export class Message {
     return msg;
   }
 
-  public static getFileContent(fileId: number) {
+  public static getFileContent(fileId: number, offset: number = 0) {
     const msg = new Message(MessageType.GET_FILE_CONTENT);
     msg.fileId = fileId;
+    msg.offset = offset;
     return msg;
   }
 
@@ -100,6 +95,10 @@ export class Message {
 
     if (dec.fileId) {
       msg.fileId = dec.fileId;
+    }
+
+    if (dec.offset != undefined) {
+      msg.offset = dec.offset;
     }
 
     if (dec.content) {
@@ -124,6 +123,7 @@ export class Message {
     const obj = {
       type: this.type,
       query: undefined,
+      offset: undefined,
       fileId: undefined,
       content: undefined,
       error: undefined,
@@ -136,6 +136,10 @@ export class Message {
 
     if (this.fileId) {
       obj.fileId = this.fileId as any;
+    }
+
+    if (this.offset != undefined) {
+      obj.offset = this.offset as any;
     }
 
     if (this.content) {

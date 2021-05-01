@@ -4,7 +4,6 @@ import {DownloadRepository} from "../repository/download.repository";
 import {DownloadService} from "../service/download.service";
 import {DownloadRequest} from "../gateway/http/controller/dto/download.request";
 import {AppEventEmitter} from "../service/app-event.emitter";
-import {DownloadDomain} from "../domain/download.domain";
 import Download from "../models/download.model";
 
 @singleton()
@@ -19,6 +18,6 @@ export class AddDownloadUsecase {
 
   public async execute(download: Download, override: boolean) {
     await this.downloadService.queue(download, override);
-    // this.appEventEmitter.emit(AppEventEmitter.DOWNLOAD_QUEUED, download);
+    this.appEventEmitter.emit(AppEventEmitter.DOWNLOAD_QUEUED, download);
   }
 }

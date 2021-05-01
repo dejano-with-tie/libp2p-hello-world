@@ -1,35 +1,35 @@
-import fs from "fs";
 import Libp2p from "libp2p";
 import pipe from "it-pipe";
 import * as lengthPrefixed from "it-length-prefixed";
-import {FileDomain} from "../domain/file.domain";
-import {CidDomain} from "../domain/cid.domain";
-import {PeerDomain} from "../domain/libp2p.domain";
+import {CidDomain, PeerDomain} from "./model";
 import logger from "../logger";
-import {ErrorCode} from "../gateway/exception/error.codes";
+import {error, ErrorCode} from "../gateway/exception/error.codes";
 import PeerId from "peer-id";
-import {singleton} from "tsyringe";
+import {delay, inject, singleton} from "tsyringe";
 import {Message} from "./proto/proto";
 import {Rpc} from "./rpc";
 import {oneOnly} from "../utils";
 import map from "it-map";
+import {FileResponse} from "../gateway/http/controller/dto/file.response";
 
 const filter = require('it-filter')
-
-const protobuf = require('protocol-buffers')
-// pass a proto file as a buffer/string or pass a parsed protobuf-schema object
-const {Request, Response, DownloadResponse} = protobuf(fs.readFileSync('./messages.proto'))
 
 @singleton()
 export class ProtocolClient {
 
-  public downloadsInProgress = new Map<number, any>();
   private readonly _protocol = '/libp2p/enutt/1.0.0';
 
-  constructor(private node: Libp2p, private rpc: Rpc) {
+  constructor(
+    @inject(delay(() => Libp2p)) private node: Libp2p,
+    private rpc: Rpc
+  ) {
     this.node = node;
     this.handleIncoming = this.handleIncoming.bind(this);
     this.node.handle(this._protocol, this.handleIncoming);
+  }
+
+  public async provide(key: CidDomain) {
+    await this.node.contentRouting.provide(key.value);
   }
 
   /**
@@ -57,13 +57,13 @@ export class ProtocolClient {
    * @param peer
    * @returns FileDomain[] files
    */
-  public async findFiles(key: CidDomain, peer: PeerDomain): Promise<FileDomain[]> {
+  public async findFiles(key: CidDomain, peer: PeerDomain): Promise<FileResponse[]> {
     logger.info(`Searching for file '${key.name}' on provider '${peer.id.toB58String()}'`);
     // await new Promise(resolve => setTimeout(resolve, this.randomIntFromInterval(1_000, 20_000)));
 
     const message = Message.findFiles(key.name);
     return (await this.sendMessage(peer.id, message)).files.map(file => {
-      return file.toDomain(peer);
+      return FileResponse.fromProto(file, peer);
     });
   }
 
@@ -73,11 +73,11 @@ export class ProtocolClient {
    * @param fileId
    * @returns FileDomain file
    */
-  public async getFile(peer: PeerDomain, fileId: number): Promise<FileDomain> {
+  public async getFile(peer: PeerDomain, fileId: number): Promise<FileResponse> {
     logger.info(`Searching for file '${fileId}' on provider '${peer.id.toB58String()}'`);
     const message = Message.getFile(fileId);
     const [first] = (await this.sendMessage(peer.id, message)).files.map(file => {
-      return file.toDomain(peer);
+      return FileResponse.fromProto(file, peer);
     });
 
     return first;
@@ -87,19 +87,17 @@ export class ProtocolClient {
    * Dials remote peer to get raw bytes of given file id
    * @param peer
    * @param fileId
-   * @param processId
+   * @param offset
    * @return Message containing raw bytes
    */
-  public async* getFileContent(peer: PeerDomain, fileId: number, processId: number): AsyncIterable<Message> {
-    this.downloadsInProgress.set(processId, {});
-    // note: dial protocol trhows exception
+  public async* getFileContent(peer: PeerDomain, fileId: number, offset: number = 0): AsyncIterable<Message> {
+    // note: dial protocol throws exception
     const stream = (await this.node?.dialProtocol(peer.id, this._protocol)).stream;
+    // return yield* this.rpc.sendMessage(Message.getFileContent(fileId), stream);
+    const response: AsyncIterable<Message> = this.rpc.sendMessage(Message.getFileContent(fileId, offset), stream);
     try {
-      return yield* this.rpc.sendMessage(Message.getFileContent(fileId), stream);
-    } catch (e) {
-      console.log(e);
-      if (e.code == ErrorCode.DOWNLOAD_PAUSE.toString()) {
-        console.log(ErrorCode.DOWNLOAD_PAUSE);
+      for await (const chunk of response) {
+        yield* this.throwIfError(chunk);
       }
     } finally {
       // ack to close stream
@@ -107,9 +105,16 @@ export class ProtocolClient {
     }
   }
 
+  private* throwIfError(message: Message): Generator<Message> {
+    if (message.error) {
+      // TODO: Need a way to recreate err
+      throw error(ErrorCode.PROTOCOL__RESPONSE_ERROR_MESSAGE, message.error);
+    }
+    yield message;
+  }
+
   private async sendMessage(peer: PeerId, message: Message): Promise<Message> {
     logger.info(`Sending message ${message.type}; to ${peer.toB58String()}`);
-    // await new Promise(resolve => setTimeout(resolve, this.randomIntFromInterval(1_000, 20_000)));
 
     const {stream} = await this.node.dialProtocol(peer, this._protocol);
     const response = await oneOnly<Message>(this.rpc.sendMessage(message, stream));

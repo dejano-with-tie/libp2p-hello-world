@@ -3,13 +3,18 @@ import {singleton} from "tsyringe";
 import {DownloadRequest, toEntity} from "./dto/download.request";
 import {DownloadRepository} from "../../../repository/download.repository";
 import {AddDownloadUsecase} from "../../../usecase/add-download.usecase";
+import {DownloadStatus} from "../../../models/download.model";
+import {DeleteDownloadRequest, DownloadActionRequest} from "./dto/download-action.request";
+import {DownloadService} from "../../../service/download.service";
+import {error, ErrorCode} from "../../exception/error.codes";
 
 @singleton()
 export class DownloadController {
 
   constructor(
     private queueFileForDownloadUsecase: AddDownloadUsecase,
-    private downloadRepository: DownloadRepository
+    private downloadRepository: DownloadRepository,
+    private downloadService: DownloadService,
   ) {
   }
 
@@ -21,13 +26,38 @@ export class DownloadController {
 
   getAll = async (req: express.Request, res: express.Response, _: express.NextFunction) => {
     const response = (await this.downloadRepository.find()).map(download => ({
+      id: download.id,
       path: download.downloadPath,
-      // TODO: Progress
-      progress: 0,
+      progress: download.progress(),
       size: download.remoteFileSize,
-      status: download.status
+      status: DownloadStatus[download.status]
     }));
 
     res.json(response);
   }
+
+  changeState = async (req: express.Request, res: express.Response, _: express.NextFunction) => {
+    const payload = req.body as DownloadActionRequest;
+    const request: DownloadActionRequest = {id: Number.parseInt(req.params['id']), action: payload.action};
+
+    if (!request.id || !request.action) {
+      throw error(ErrorCode.BAD_REQUEST);
+    }
+
+    const state = await this.downloadService.action(request);
+    res.json(state);
+  }
+
+  delete = async (req: express.Request, res: express.Response, _: express.NextFunction) => {
+    const payload = req.body as DeleteDownloadRequest;
+    const request: DeleteDownloadRequest = {id: Number.parseInt(req.params['id']), fromFs: payload.fromFs};
+
+    if (!request.id || request.fromFs == undefined) {
+      throw error(ErrorCode.BAD_REQUEST);
+    }
+
+    await this.downloadService.delete(request);
+    res.json({});
+  }
+
 }
