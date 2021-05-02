@@ -2,10 +2,10 @@ import {FindProviderRequest} from "../gateway/http/controller/dto/find-provider.
 import {inject, singleton} from "tsyringe";
 import {Config} from "../config";
 import logger from "../logger";
-import {HashRepository} from "../repository/hash.repository";
+import {HashRepository} from "../db/repository/hash.repository";
 import {FileService} from "../service/file.service";
-import {ProtocolService} from "../libp2p-client/protocol.service";
-import {CidDomain, PeerDomain} from "../libp2p-client/model";
+import {ProtocolService} from "../protocol/protocol.service";
+import {CidDomain, PeerDomain} from "../protocol/model";
 import {FileResponse} from "../gateway/http/controller/dto/file.response";
 
 @singleton()

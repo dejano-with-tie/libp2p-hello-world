@@ -46,16 +46,8 @@ export default class Download extends Auditing {
   })
   status: DownloadStatus
 
-  @Column({
-    nullable: false,
-    // FIXME: Config + filename
-    default: '/home/dejano/Projects/libp2p-hello-world/1.dat'
-  })
+  @Column({nullable: false})
   downloadPath: string
-
-  public inProgress() {
-    this.status = DownloadStatus.IN_PROGRESS;
-  }
 
   public progress() {
     return Math.floor((this.offset / this.remoteFileSize) * 100)

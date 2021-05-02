@@ -1,5 +1,5 @@
 import {EntityRepository, Not, Repository} from "typeorm";
-import Download, {DownloadStatus} from "../models/download.model";
+import Download, {DownloadStatus} from "../model/download.model";
 
 @EntityRepository(Download)
 export class DownloadRepository extends Repository<Download> {

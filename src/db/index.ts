@@ -1,10 +1,10 @@
 import {createConnection, getCustomRepository} from "typeorm";
 import {Connection} from "typeorm/connection/Connection";
-import {FileRepository} from "../repository/file.repository";
-import {HashRepository} from "../repository/hash.repository";
-import {DownloadRepository} from "../repository/download.repository";
+import {FileRepository} from "./repository/file.repository";
+import {HashRepository} from "./repository/hash.repository";
+import {DownloadRepository} from "./repository/download.repository";
 import {container} from "tsyringe";
-import {DirectoryRepository} from "../repository/directory.repository";
+import {DirectoryRepository} from "./repository/directory.repository";
 
 export class Db {
   public fileRepository: FileRepository;
@@ -33,7 +33,7 @@ export class Db {
       name: path,
       database: path,
       entities: [
-        __dirname + '/*.ts'
+        __dirname + '/model/*.ts'
       ],
       synchronize: true
     });

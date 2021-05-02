@@ -1,10 +1,10 @@
-import {DownloadRepository} from "../repository/download.repository";
+import {DownloadRepository} from "../db/repository/download.repository";
 import {delay, inject, singleton} from "tsyringe";
-import Download, {DownloadStatus} from "../models/download.model";
+import Download, {DownloadStatus} from "../db/model/download.model";
 import {error, ErrorCode} from "../gateway/exception/error.codes";
-import {ProtocolService} from "../libp2p-client/protocol.service";
-import {ProtocolClient} from "../libp2p-client/protocol.client";
-import {DownloadState, fromRemoteId} from "../libp2p-client/model";
+import {ProtocolService} from "../protocol/protocol.service";
+import {ProtocolClient} from "../protocol/protocol.client";
+import {DownloadState, fromRemoteId} from "../protocol/model";
 import {FileService} from "./file.service";
 import {AppEventEmitter} from "./app-event.emitter";
 import {

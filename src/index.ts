@@ -3,9 +3,8 @@ import {Builder} from "builder-pattern";
 import {Config, defaultConfigBuilder, libp2pConfig} from "./config";
 import {discover} from "./nat";
 import {run as gateway} from "./gateway";
-import {Db} from './models';
+import {Db} from './db';
 import {container} from "tsyringe";
-import Libp2p from "libp2p";
 import {bootstrap} from "./bootstrap";
 import {FileService} from "./service/file.service";
 
@@ -45,7 +44,7 @@ const singleNode = async () => {
   const natType = await discover();
   const config = await libp2pConfig(builderFromEnv().build(), natType);
 
-  // NOTE: container.register is used in src/index, src/models/index (repos) and src/gateway/io/index (socket)
+  // NOTE: container.register is used in src/index, src/db/index (repos) and src/gateway/io/index (socket)
   // @ts-ignore
   container.register<Config>(Config, {useValue: config});
   container.register<Config>("Config", {useValue: config});

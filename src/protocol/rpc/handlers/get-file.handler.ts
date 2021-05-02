@@ -4,7 +4,7 @@ import PeerId from "peer-id";
 import {File, Message} from "../../proto/proto";
 import {error, ErrorCode} from "../../../gateway/exception/error.codes";
 import {singleton} from "tsyringe";
-import {FileRepository} from "../../../repository/file.repository";
+import {FileRepository} from "../../../db/repository/file.repository";
 
 @singleton()
 export class GetFileHandler {

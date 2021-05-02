@@ -1,6 +1,6 @@
 import EventEmitter from "events";
 import {delay, inject, singleton} from "tsyringe";
-import Download, {DownloadStatus} from "../models/download.model";
+import Download, {DownloadStatus} from "../db/model/download.model";
 import {DownloadIoHandler} from "../gateway/io/download.io-handler";
 import {wrapIoEvent} from "../gateway/io/io-handler";
 

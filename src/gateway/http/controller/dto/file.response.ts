@@ -1,7 +1,6 @@
-import {PeerDomain} from "../../../../libp2p-client/model";
-import File from "../../../../models/file.model";
-import * as proto from '../../../../libp2p-client/proto/proto'
-import {FileRepository} from "../../../../repository/file.repository";
+import {PeerDomain} from "../../../../protocol/model";
+import File from "../../../../db/model/file.model";
+import * as proto from '../../../../protocol/proto/proto'
 
 export class FileResponse {
   id: number;

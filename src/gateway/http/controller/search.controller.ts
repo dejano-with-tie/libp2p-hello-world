@@ -3,9 +3,9 @@ import {singleton} from "tsyringe";
 import {FindFilesUsecase} from "../../../usecase/find-files.usecase";
 import {FindProviderRequest} from "./dto/find-provider.request";
 import {collect} from "streaming-iterables";
-import {ErrorCode, error} from "../../exception/error.codes";
+import {error, ErrorCode} from "../../exception/error.codes";
 import {FileResponse} from "./dto/file.response";
-import {PeerDomain} from "../../../libp2p-client/model";
+import {PeerDomain} from "../../../protocol/model";
 
 @singleton()
 export class SearchController {

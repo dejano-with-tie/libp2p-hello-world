@@ -1,5 +1,5 @@
 import {error, ErrorCode} from "../../../exception/error.codes";
-import Download, {DownloadStatus} from "../../../../models/download.model";
+import Download, {DownloadStatus} from "../../../../db/model/download.model";
 
 export interface DownloadRequest {
   remotePeerId: string;

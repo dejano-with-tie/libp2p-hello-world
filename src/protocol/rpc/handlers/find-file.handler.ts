@@ -3,11 +3,11 @@ import fs from "fs";
 import PeerId from "peer-id";
 import * as proto from "../../proto/proto";
 import {error, ErrorCode} from "../../../gateway/exception/error.codes";
-import {HashRepository} from "../../../repository/hash.repository";
+import {HashRepository} from "../../../db/repository/hash.repository";
 import {singleton} from "tsyringe";
 import {CidDomain} from "../../model";
-import Hash from "../../../models/hash.model";
-import File from "../../../models/file.model";
+import Hash from "../../../db/model/hash.model";
+import File from "../../../db/model/file.model";
 
 @singleton()
 export class FindFileHandler {

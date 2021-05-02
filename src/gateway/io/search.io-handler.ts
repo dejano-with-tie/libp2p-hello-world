@@ -1,12 +1,12 @@
 import {Socket} from "socket.io";
-import {IoEvent, IoHandler, wrapIoEvent} from "./io-handler";
+import {IoEvent, IoHandler} from "./io-handler";
 import {FindFilesUsecase} from "../../usecase/find-files.usecase";
 import {FindProviderRequest} from "../http/controller/dto/find-provider.request";
 import {error, ErrorCode} from "../exception/error.codes";
-import {delay, inject, injectable} from "tsyringe";
+import {inject, injectable} from "tsyringe";
 import {FileResponse} from "../http/controller/dto/file.response";
-import {CidDomain, PeerDomain} from "../../libp2p-client/model";
-import {ProtocolService} from "../../libp2p-client/protocol.service";
+import {CidDomain, PeerDomain} from "../../protocol/model";
+import {ProtocolService} from "../../protocol/protocol.service";
 
 /**
  * Socket.io handler for all events starting with 'search*'

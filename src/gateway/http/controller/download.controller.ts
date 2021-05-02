@@ -1,9 +1,9 @@
 import express from "express";
 import {singleton} from "tsyringe";
 import {DownloadRequest, toEntity} from "./dto/download.request";
-import {DownloadRepository} from "../../../repository/download.repository";
-import {AddDownloadUsecase} from "../../../usecase/add-download.usecase";
-import {DownloadStatus} from "../../../models/download.model";
+import {DownloadRepository} from "../../../db/repository/download.repository";
+import {QueueDownloadUsecase} from "../../../usecase/queue-download.usecase";
+import {DownloadStatus} from "../../../db/model/download.model";
 import {DeleteDownloadRequest, DownloadActionRequest} from "./dto/download-action.request";
 import {DownloadService} from "../../../service/download.service";
 import {error, ErrorCode} from "../../exception/error.codes";
@@ -12,7 +12,7 @@ import {error, ErrorCode} from "../../exception/error.codes";
 export class DownloadController {
 
   constructor(
-    private queueFileForDownloadUsecase: AddDownloadUsecase,
+    private queueFileForDownloadUsecase: QueueDownloadUsecase,
     private downloadRepository: DownloadRepository,
     private downloadService: DownloadService,
   ) {

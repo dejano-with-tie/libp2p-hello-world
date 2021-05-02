@@ -1,4 +1,4 @@
-import {DownloadStatus} from "../../../../models/download.model";
+import {DownloadStatus} from "../../../../db/model/download.model";
 
 export interface GetAllDownloadsResponse {
   path: string;

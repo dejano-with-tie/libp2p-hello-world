@@ -1,13 +1,11 @@
 import {delay, inject, singleton} from "tsyringe";
 import {Config} from "../config";
-import {DownloadRepository} from "../repository/download.repository";
 import {DownloadService} from "../service/download.service";
-import {DownloadRequest} from "../gateway/http/controller/dto/download.request";
 import {AppEventEmitter} from "../service/app-event.emitter";
-import Download from "../models/download.model";
+import Download from "../db/model/download.model";
 
 @singleton()
-export class AddDownloadUsecase {
+export class QueueDownloadUsecase {
 
   constructor(
     @inject("Config") private config: Config,

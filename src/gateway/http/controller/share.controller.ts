@@ -1,6 +1,6 @@
 import express from "express";
 import {singleton} from "tsyringe";
-import {FileRepository} from "../../../repository/file.repository";
+import {FileRepository} from "../../../db/repository/file.repository";
 import {GetAllSharedResponse} from "./dto/get-all-shared.response";
 import path from "path";
 

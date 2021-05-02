@@ -3,24 +3,24 @@ import {Format} from "logform";
 import {isProd} from "./utils";
 
 const formats: Format[] = [
-    winston.format.simple(),
-    winston.format.colorize(),
-    winston.format.splat(),
-    winston.format.ms(),
+  winston.format.simple(),
+  winston.format.colorize(),
+  winston.format.splat(),
+  winston.format.ms(),
 ]
 
 const logger = winston.createLogger({
-    level: 'debug',
+  level: 'debug',
 
-    format: winston.format.combine(...formats),
-    transports: [
-        //
-        // - Write all logs with level `error` and below to `error.log`
-        // - Write all logs with level `info` and below to `combined.log`
-        //
-        new winston.transports.File({filename: 'error.log', level: 'error'}),
-        new winston.transports.File({filename: 'combined.log'}),
-    ],
+  format: winston.format.combine(...formats),
+  transports: [
+    //
+    // - Write all logs with level `error` and below to `error.log`
+    // - Write all logs with level `info` and below to `combined.log`
+    //
+    new winston.transports.File({filename: 'error.log', level: 'error'}),
+    new winston.transports.File({filename: 'combined.log'}),
+  ],
 });
 
 //
@@ -28,8 +28,8 @@ const logger = winston.createLogger({
 // `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
 //
 if (!isProd()) {
-    logger.add(new winston.transports.Console({
-        format: winston.format.combine(winston.format.combine(...formats)),
-    }));
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(winston.format.combine(...formats)),
+  }));
 }
 export default logger;

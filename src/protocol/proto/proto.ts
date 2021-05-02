@@ -1,9 +1,7 @@
 import fs from "fs";
-import {PeerDomain} from "../model";
-import {FileResponse} from "../../gateway/http/controller/dto/file.response";
 
 const protobuf = require('protocol-buffers');
-const pbm = protobuf(fs.readFileSync('./src/libp2p-client/proto/messages.proto'));
+const pbm = protobuf(fs.readFileSync('./src/protocol/proto/messages.proto'));
 
 export enum MessageType {
   FIND_FILE = 1,

@@ -1,5 +1,5 @@
 import {EntityRepository, Repository} from "typeorm";
-import File from "../models/file.model";
+import File from "../model/file.model";
 import {FindManyOptions} from "typeorm/find-options/FindManyOptions";
 
 @EntityRepository(File)

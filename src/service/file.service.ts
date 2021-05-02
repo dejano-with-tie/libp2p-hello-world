@@ -1,8 +1,9 @@
 import {delay, inject, injectable} from "tsyringe";
-import {FileRepository} from "../repository/file.repository";
-import {HashRepository} from "../repository/hash.repository";
-import Hash from "../models/hash.model";
-import File from "../models/file.model";
+import * as hasher from 'multiformats/hashes/hasher';
+import {FileRepository} from "../db/repository/file.repository";
+import {HashRepository} from "../db/repository/hash.repository";
+import Hash from "../db/model/hash.model";
+import File from "../db/model/file.model";
 import * as fs from "fs";
 import {Stats} from "fs";
 import * as fspath from "path";
@@ -10,14 +11,16 @@ import path from "path";
 import logger from "../logger";
 import {error, ErrorCode} from "../gateway/exception/error.codes";
 import {Config, SharedDir} from "../config";
-import {DirectoryRepository} from "../repository/directory.repository";
-import Directory from "../models/directory.model";
+import {DirectoryRepository} from "../db/repository/directory.repository";
+import Directory from "../db/model/directory.model";
 import CID from "cids";
-import raw from 'multiformats/codecs/raw'
-import {sha256} from 'multiformats/hashes/sha2'
+import * as raw from 'multiformats/codecs/raw'
 import {FileTypeService} from "./file-type.service";
-import {ProtocolClient} from "../libp2p-client/protocol.client";
-import {CidDomain} from "../libp2p-client/model";
+import {ProtocolClient} from "../protocol/protocol.client";
+import {CidDomain} from "../protocol/model";
+import * as crypto from "crypto";
+
+const multihashing = require('multihashing-async')
 
 const fsp = fs.promises;
 
@@ -197,10 +200,24 @@ export class FileService {
     return validDirs;
   }
 
+
   private async toModel(fileStat: Stats, filePath: string, dir: Directory) {
-    const bytes = await raw.encode(await fsp.readFile(filePath));
-    const digest = await sha256.digest(bytes);
-    const fileHash = new CID(1, raw.code, digest.bytes,);
+    // TODO: move to utils
+    const sha256 = hasher.from({
+      // As per multiformats table
+      // https://github.com/multiformats/multicodec/blob/master/table.csv#L9
+      name: 'sha2-256',
+      code: 0x12,
+
+      encode: (input) => new Uint8Array(crypto.createHash('sha256').update(input).digest())
+    })
+
+    const digest = await sha256.digest(await raw.encode(await fsp.readFile(filePath)))
+    const fileHash = new CID(1, raw.code, digest.bytes);
+
+    // const bytes = await raw.encode(await fsp.readFile(filePath));
+    // const digest = await sha256.digest(bytes);
+    // const fileHash = new CID(1, raw.code, digest.bytes,);
 
     const extName = path.extname(filePath);
     const name = path.basename(filePath, extName);
