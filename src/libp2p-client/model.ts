@@ -8,13 +8,17 @@ import {DownloadStatus} from "../models/download.model";
 export interface PeerDomain {
   id: PeerId;
   isLocal: boolean;
+  relayedConn: boolean | undefined;
+  reachable: boolean;
   multiaddrs: Multiaddr[];
 }
 
-export function remotePeer(peerId: string) {
+export function fromRemoteId(peerId: string, relayedConn: boolean = false) {
   return {
     id: PeerId.createFromB58String(peerId),
     isLocal: false,
+    relayedConn: relayedConn,
+    reachable: true,
     multiaddrs: []
   }
 }

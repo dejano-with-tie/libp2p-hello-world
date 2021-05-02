@@ -1,6 +1,7 @@
 import {PeerDomain} from "../../../../libp2p-client/model";
 import File from "../../../../models/file.model";
 import * as proto from '../../../../libp2p-client/proto/proto'
+import {FileRepository} from "../../../../repository/file.repository";
 
 export class FileResponse {
   id: number;
@@ -23,6 +24,12 @@ export class FileResponse {
     this.provider = provider;
   }
 
+  public static unreachable(provider: PeerDomain) {
+    provider.reachable = false;
+    provider.relayedConn = undefined;
+    return new FileResponse(0, '', '', 0, '', '', '', provider);
+  }
+
   public static fromModel(file: File, provider: PeerDomain) {
     return new FileResponse(file.id, file.advertisedPath(), file.checksum, file.size, file.mime, file.createdAt.toString(), file.updatedAt.toString(), provider);
   }
@@ -31,7 +38,9 @@ export class FileResponse {
     return new FileResponse(file.id, file.path, file.checksum, file.size, file.mime, file.createdAt, file.updatedAt, {
       id: peer.id,
       multiaddrs: peer.multiaddrs,
+      relayedConn: peer.relayedConn,
       isLocal: false,
+      reachable: true
     });
   }
 }

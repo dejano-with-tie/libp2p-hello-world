@@ -181,7 +181,7 @@ export class FileService {
           logger.info(`published [${file.path}] \t\t\t${cid.toString()}`);
         }
       })();
-    }, 2 * 1000);
+    }, 2e3);
   }
 
   private async invalidateExistingDirs(): Promise<Directory[]> {

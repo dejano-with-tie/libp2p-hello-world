@@ -5,7 +5,7 @@ import logger from "../logger";
 import {HashRepository} from "../repository/hash.repository";
 import {FileService} from "../service/file.service";
 import {ProtocolService} from "../libp2p-client/protocol.service";
-import {CidDomain} from "../libp2p-client/model";
+import {CidDomain, PeerDomain} from "../libp2p-client/model";
 import {FileResponse} from "../gateway/http/controller/dto/file.response";
 
 @singleton()
@@ -24,7 +24,7 @@ export class FindFilesUsecase {
    * @param dto
    * @returns yields array of files from each provider (peer)
    */
-  public async* execute(dto: FindProviderRequest): AsyncIterable<FileResponse[]> {
+  public async* execute(dto: FindProviderRequest): AsyncIterable<FileResponse[] | PeerDomain> {
     const cid = await new CidDomain(dto.query).digest();
 
     logger.info(`--> searching for [${cid.toString()}]`);

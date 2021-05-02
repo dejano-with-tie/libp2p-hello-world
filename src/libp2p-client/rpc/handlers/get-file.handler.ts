@@ -32,7 +32,7 @@ export class GetFileHandler {
     const response = new Message(Message.TYPES.GET_FILE);
     response.files = [new File(
       file.id,
-      file.path,
+      file.advertisedPath(),
       file.mime,
       file.checksum,
       file.size,

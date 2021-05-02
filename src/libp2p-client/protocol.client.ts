@@ -11,6 +11,8 @@ import {Rpc} from "./rpc";
 import {oneOnly} from "../utils";
 import map from "it-map";
 import {FileResponse} from "../gateway/http/controller/dto/file.response";
+import Connection from "libp2p-interfaces/src/connection/connection";
+import pTimeout from "p-timeout";
 
 const filter = require('it-filter')
 
@@ -40,7 +42,8 @@ export class ProtocolClient {
     logger.info(`Searching for providers of '${key.name}'`);
     try {
       yield* pipe(
-        this.node.contentRouting.findProviders(key.value, {timeout: 10000}),
+        this.node.contentRouting.findProviders(key.value, {timeout: 10e3}),
+        (source: any) => map(source, this.isRelayed()),
         (source: any) => filter(source, this.onlyRemote())
       );
     } catch (e) {
@@ -62,9 +65,15 @@ export class ProtocolClient {
     // await new Promise(resolve => setTimeout(resolve, this.randomIntFromInterval(1_000, 20_000)));
 
     const message = Message.findFiles(key.name);
-    return (await this.sendMessage(peer.id, message)).files.map(file => {
-      return FileResponse.fromProto(file, peer);
-    });
+    try {
+      return (await this.pTimeoutSendMessage(peer.id, message)).files.map(file => {
+        peer = this.isRelayed()(peer);
+        return FileResponse.fromProto(file, peer);
+      });
+    } catch (e) {
+      console.error(e);
+      return Promise.resolve([FileResponse.unreachable(peer)]);
+    }
   }
 
   /**
@@ -76,11 +85,14 @@ export class ProtocolClient {
   public async getFile(peer: PeerDomain, fileId: number): Promise<FileResponse> {
     logger.info(`Searching for file '${fileId}' on provider '${peer.id.toB58String()}'`);
     const message = Message.getFile(fileId);
-    const [first] = (await this.sendMessage(peer.id, message)).files.map(file => {
-      return FileResponse.fromProto(file, peer);
-    });
-
-    return first;
+    try {
+      return (await this.sendMessage(peer.id, message)).files.map(file => {
+        return FileResponse.fromProto(file, peer);
+      })[0];
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   }
 
   /**
@@ -97,7 +109,7 @@ export class ProtocolClient {
     const response: AsyncIterable<Message> = this.rpc.sendMessage(Message.getFileContent(fileId, offset), stream);
     try {
       for await (const chunk of response) {
-        yield* this.throwIfError(chunk);
+        yield* this.throwIfErrorResponse(chunk);
       }
     } finally {
       // ack to close stream
@@ -105,12 +117,19 @@ export class ProtocolClient {
     }
   }
 
-  private* throwIfError(message: Message): Generator<Message> {
+  private* throwIfErrorResponse(message: Message): Generator<Message> {
     if (message.error) {
       // TODO: Need a way to recreate err
       throw error(ErrorCode.PROTOCOL__RESPONSE_ERROR_MESSAGE, message.error);
     }
     yield message;
+  }
+
+  private async pTimeoutSendMessage(peer: PeerId, message: Message): Promise<Message> {
+    return pTimeout(
+      this.sendMessage(peer, message),
+      2e3
+    )
   }
 
   private async sendMessage(peer: PeerId, message: Message): Promise<Message> {
@@ -150,6 +169,17 @@ export class ProtocolClient {
   private onlyRemote() {
     return (peer: any) => {
       return !peer.id.equals(this.node.peerId);
+    };
+  }
+
+  private isRelayed() {
+    return (peer: PeerDomain) => {
+      console.log(this.node.connections.get(peer.id.toB58String()))
+      const conn: Connection | null = this.node.connectionManager.get(peer.id)
+      if (conn) {
+        peer.relayedConn = conn.remoteAddr.toString().indexOf('p2p-circuit') > -1;
+      }
+      return peer;
     };
   }
 

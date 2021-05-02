@@ -1,11 +1,9 @@
 import {singleton} from "tsyringe";
 import Libp2p from "libp2p";
 import {ProtocolClient} from "./protocol.client";
-import {CidDomain, PeerDomain, remotePeer} from "./model";
+import {CidDomain, PeerDomain} from "./model";
 import {transform} from "streaming-iterables";
 import pipe from "it-pipe";
-import Download from "../models/download.model";
-import fs from "fs";
 import {FileResponse} from "../gateway/http/controller/dto/file.response";
 
 @singleton()
@@ -23,7 +21,9 @@ export class ProtocolService {
     return {
       id: this.node.peerId,
       multiaddrs: this.node.multiaddrs,
-      isLocal: true
+      relayedConn: false,
+      isLocal: true,
+      reachable: true
     }
   }
 
@@ -40,7 +40,7 @@ export class ProtocolService {
   public async* findFiles(key: CidDomain): AsyncGenerator<FileResponse[]> {
     // TODO Prolly move it to file service or protocol client
     const files: AsyncIterableIterator<FileResponse[]> = pipe(
-      this.findProviders(key),
+      this.protocolClient.findProviders(key),
       transform(1000, (peer: PeerDomain) => {
         return this.protocolClient.findFiles(key, peer)
       })

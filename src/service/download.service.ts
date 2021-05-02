@@ -4,7 +4,7 @@ import Download, {DownloadStatus} from "../models/download.model";
 import {error, ErrorCode} from "../gateway/exception/error.codes";
 import {ProtocolService} from "../libp2p-client/protocol.service";
 import {ProtocolClient} from "../libp2p-client/protocol.client";
-import {DownloadState, remotePeer} from "../libp2p-client/model";
+import {DownloadState, fromRemoteId} from "../libp2p-client/model";
 import {FileService} from "./file.service";
 import {AppEventEmitter} from "./app-event.emitter";
 import {
@@ -51,7 +51,7 @@ export class DownloadService {
     await this.updateWithState(state, toDl);
     const progress = this.track(state, toDl.remoteFileSize);
 
-    const stream = await this.protocolClient.getFileContent(remotePeer(toDl.remotePeerId), toDl.remoteFileId, state.offset);
+    const stream = await this.protocolClient.getFileContent(fromRemoteId(toDl.remotePeerId), toDl.remoteFileId, state.offset);
     this.activeDownloads.set(id, state);
     try {
       for await (const chunk of stream) {
@@ -81,7 +81,8 @@ export class DownloadService {
   }
 
   public async queue(download: Download, override: boolean): Promise<Download> {
-    const file = await this.protocolClient.getFile(remotePeer(download.remotePeerId), download.remoteFileId);
+    // TODO: this throws
+    const file = await this.protocolClient.getFile(fromRemoteId(download.remotePeerId), download.remoteFileId);
     const existInDb = await this.downloadRepository.findOneByChecksumAndInProgress(file.checksum);
     if (existInDb && !override) {
       throw error(ErrorCode.DOWNLOAD_IN_PROGRESS);

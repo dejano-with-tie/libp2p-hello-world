@@ -5,6 +5,8 @@ import {FindProviderRequest} from "../http/controller/dto/find-provider.request"
 import {error, ErrorCode} from "../exception/error.codes";
 import {delay, inject, injectable} from "tsyringe";
 import {FileResponse} from "../http/controller/dto/file.response";
+import {CidDomain, PeerDomain} from "../../libp2p-client/model";
+import {ProtocolService} from "../../libp2p-client/protocol.service";
 
 /**
  * Socket.io handler for all events starting with 'search*'
@@ -13,21 +15,26 @@ import {FileResponse} from "../http/controller/dto/file.response";
 export class SearchIoHandler extends IoHandler {
   constructor(
     @inject("Socket[]") sockets: Socket[],
-    private findFilesUseCase: FindFilesUsecase
+    private findFilesUseCase: FindFilesUsecase,
+    private protocolService: ProtocolService
   ) {
     super(sockets);
   }
 
-  async search(event: IoEvent<FindProviderRequest>): Promise<void> {
-    const filesByProvider: AsyncIterable<FileResponse[]> = await this.findFilesUseCase.execute(event.content);
+  async details(event: IoEvent<FindProviderRequest>): Promise<void> {
+    const filesByProvider: AsyncIterable<FileResponse[] | PeerDomain> = await this.findFilesUseCase.execute(event.content);
     for await(const files of filesByProvider) {
       this.emit(event.id, files);
     }
     this.emit(event.id, [], true);
   }
 
-  async providers(_: IoEvent<FindProviderRequest>): Promise<void> {
-    throw error(ErrorCode.NOT_IMPLEMENTED);
+  async providers(event: IoEvent<FindProviderRequest>): Promise<void> {
+    const cid = await new CidDomain(event.content.query).digest();
+    for await(const provider of this.protocolService.findProviders(cid)) {
+      this.emit(event.id, provider);
+    }
+    this.emit(event.id, [], true);
   }
 
   async files(_: IoEvent<any>): Promise<void> {

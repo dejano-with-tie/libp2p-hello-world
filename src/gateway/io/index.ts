@@ -2,7 +2,6 @@ import {Socket} from "socket.io";
 import {container} from "tsyringe";
 import {SearchIoHandler} from "./search.io-handler";
 import logger from "../../logger";
-import {DownloadIoHandler} from "./download.io-handler";
 import {wrapIoEvent} from "./io-handler";
 
 const sockets: Socket[] = [];
@@ -18,13 +17,7 @@ export const registerIoHandlers = (socket: Socket) => {
   }
 
   const searchIoHandler = container.resolve(SearchIoHandler);
-  const downloadIoHandler = container.resolve(DownloadIoHandler);
 
-  register('search', searchIoHandler.search.bind(searchIoHandler));
-  // register('download', downloadIoHandler.download.bind(searchIoHandler));
-
-  setTimeout(() => {
-    socket.emit('test', 'hello');
-  }, 2000);
-
+  register('search:details', searchIoHandler.details.bind(searchIoHandler));
+  register('search:providers', searchIoHandler.providers.bind(searchIoHandler));
 }

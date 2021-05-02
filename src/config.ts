@@ -96,6 +96,12 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
         `/ip4/0.0.0.0/tcp/${fileConfig.network.port}`,
       ]
     },
+    metrics: {
+      enabled: false
+    },
+    dialer: {
+      dialTimeout: 5e3,
+    },
     modules: {
       transport: [TCP],
       streamMuxer: [Mplex],
@@ -105,9 +111,14 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
       pubsub: Gossipsub
     },
     config: {
+      nat: {
+        pmp: {
+          enabled: false
+        }
+      },
       peerDiscovery: {
         [PubsubPeerDiscovery.tag]: {
-          interval: 1000,
+          interval: 1e3,
           enabled: true
         },
         [Bootstrap.tag]: {
