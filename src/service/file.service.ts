@@ -20,8 +20,6 @@ import {ProtocolClient} from "../protocol/protocol.client";
 import {CidDomain} from "../protocol/model";
 import * as crypto from "crypto";
 
-const multihashing = require('multihashing-async')
-
 const fsp = fs.promises;
 
 @injectable()
@@ -215,32 +213,19 @@ export class FileService {
     const digest = await sha256.digest(await raw.encode(await fsp.readFile(filePath)))
     const fileHash = new CID(1, raw.code, digest.bytes);
 
-    // const bytes = await raw.encode(await fsp.readFile(filePath));
-    // const digest = await sha256.digest(bytes);
-    // const fileHash = new CID(1, raw.code, digest.bytes,);
-
     const extName = path.extname(filePath);
     const name = path.basename(filePath, extName);
     const cid = await new CidDomain(name).digest();
 
-    const details = {
-      size: fileStat.size,
-      cid,
-      path: filePath,
-      extName,
-      name,
-      fileHash
-    }
+    const hash = new Hash();
+    hash.cid = cid.toString();
+    hash.value = name;
+    const type = await this.fileTypeService.type(filePath);
 
-    const hash = this.hashRepository.create();
-    hash.cid = details.cid.toString();
-    hash.value = details.name;
-
-    const type = await this.fileTypeService.type(details.path);
-    const file = this.fileRepository.create();
-    file.checksum = details.fileHash.toString();
-    file.path = details.path;
-    file.size = details.size;
+    const file = new File();
+    file.checksum = fileHash.toString();
+    file.path = filePath;
+    file.size = fileStat.size;
     file.mime = type.mime;
     file.ext = type.ext;
     file.hashes = [hash];

@@ -2,17 +2,17 @@ import express from "express";
 import {singleton} from "tsyringe";
 import {DownloadRequest, toEntity} from "./dto/download.request";
 import {DownloadRepository} from "../../../db/repository/download.repository";
-import {QueueDownloadUsecase} from "../../../usecase/queue-download.usecase";
 import {DownloadStatus} from "../../../db/model/download.model";
 import {DeleteDownloadRequest, DownloadActionRequest} from "./dto/download-action.request";
 import {DownloadService} from "../../../service/download.service";
 import {error, ErrorCode} from "../../exception/error.codes";
+import {DownloadFile} from "../../../usecase/download-file";
 
 @singleton()
 export class DownloadController {
 
   constructor(
-    private queueFileForDownloadUsecase: QueueDownloadUsecase,
+    private downloadFile: DownloadFile,
     private downloadRepository: DownloadRepository,
     private downloadService: DownloadService,
   ) {
@@ -20,7 +20,7 @@ export class DownloadController {
 
   queue = async (req: express.Request, res: express.Response, _: express.NextFunction) => {
     const payload = req.body as DownloadRequest;
-    await this.queueFileForDownloadUsecase.execute(toEntity(payload), payload.override);
+    await this.downloadFile.queue(toEntity(payload), payload.override);
     res.json({});
   }
 

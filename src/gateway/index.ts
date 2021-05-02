@@ -6,7 +6,7 @@ import logger from '../logger';
 import {Server} from 'socket.io';
 import {ErrorHandler} from "./exception/error.handler";
 import {registerRoutes} from './http';
-import {registerIoHandlers} from "./io";
+import {onSocket} from "./io";
 import {Config} from "../config";
 
 export const run = (config: Config) => {
@@ -19,7 +19,7 @@ export const run = (config: Config) => {
       methods: '*'
     }
   });
-  io.on('connection', registerIoHandlers);
+  io.on('connection', onSocket);
 
   app.use(cors());
   app.use(require('morgan')('dev'));

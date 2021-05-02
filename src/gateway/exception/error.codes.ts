@@ -12,6 +12,7 @@ export enum ErrorCode {
   DOWNLOAD_IN_PROGRESS = 'There is already download in progress',
   DOWNLOAD_PAUSE = 'Download paused',
   PROTOCOL__MESSAGE_TIMEOUT = 'Protocol err; Timeout',
+  UNKNOWN_IO_HANDLER = 'Unknown io handler',
   PROTOCOL__UNKNOWN_MESSAGE_HANDLER = 'Protocol err; Unknown message handler',
   PROTOCOL__NO_MESSAGE_RECEIVED = 'Protocol err; no message received',
   PROTOCOL__RESPONSE_ERROR_MESSAGE = 'Protocol err; peer responded with error',

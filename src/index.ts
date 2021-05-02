@@ -7,6 +7,8 @@ import {Db} from './db';
 import {container} from "tsyringe";
 import {bootstrap} from "./bootstrap";
 import {FileService} from "./service/file.service";
+import crypto from "crypto";
+import {hasher} from "multiformats";
 
 
 const main = async (runMultiple: boolean) => {
@@ -53,6 +55,12 @@ const singleNode = async () => {
   // @ts-ignore
   container.register<Db>(Db, {useValue: db});
   container.register<Db>("Db", {useValue: db});
+  const sha256 = hasher.from({
+    name: 'sha2-256',
+    code: 0x12,
+    encode: (input) => new Uint8Array(crypto.createHash('sha256').update(input).digest())
+  });
+  container.register("hasher", {useValue: sha256});
 
   // const node = await Node.run(config, db);
   const node = await bootstrap(config, container.resolve<FileService>(FileService));

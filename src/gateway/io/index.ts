@@ -1,16 +1,17 @@
 import {Socket} from "socket.io";
 import {container} from "tsyringe";
-import {SearchIoHandler} from "./search.io-handler";
+import {IoEventId, wrapIoEvent} from "./model";
+import {SearchIoHandler} from "./handlers/search.io-handler";
 import logger from "../../logger";
-import {wrapIoEvent} from "./io-handler";
 
+// register sockets with IOC
 const sockets: Socket[] = [];
 container.register<Socket[]>('Socket[]', {useValue: sockets});
-export const registerIoHandlers = (socket: Socket) => {
+export const onSocket = (socket: Socket) => {
   sockets.push(socket);
 
   logger.info('socket connected');
-  const register = (id: string, handler: any) => {
+  const register = (id: IoEventId, handler: any) => {
     socket.on(id, async (event) => {
       await handler(wrapIoEvent(id, event))
     });
@@ -18,6 +19,5 @@ export const registerIoHandlers = (socket: Socket) => {
 
   const searchIoHandler = container.resolve(SearchIoHandler);
 
-  register('search:details', searchIoHandler.details.bind(searchIoHandler));
-  register('search:providers', searchIoHandler.providers.bind(searchIoHandler));
+  register(IoEventId.SEARCH, searchIoHandler.handle.bind(searchIoHandler));
 }
