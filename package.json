@@ -32,8 +32,6 @@
     "figures": "^3.2.0",
     "file-type": "^16.3.0",
     "filesize": "^6.1.0",
-    "freedom-for-node": "^0.2.20",
-    "freedom-port-control": "^0.9.11",
     "fsu": "^2.0.2",
     "it-filter": "^1.0.2",
     "it-length-prefixed": "^3.1.0",
