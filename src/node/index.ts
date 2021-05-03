@@ -44,13 +44,13 @@ export class Node {
     await this._fileService.publishFiles();
     this._libp2p.addressManager.on('change:addresses', async () => {
       logger.info('address changed')
-      logger.info(this._libp2p.addressManager.getObservedAddrs().map(a => a.toString()));
+      logger.info(this._libp2p.addressManager.getObservedAddrs().map((a:any) => a.toString()));
     });
-    this._libp2p.connectionManager.on('peer:connect', (_) => {
+    this._libp2p.connectionManager.on('peer:connect', (_:any) => {
       // +1 because this is emitted after connection is added to the store
       this._appEventEmitter.emit(AppEventId.CONTEXT, {connections: this._libp2p.connectionManager.connections.size + 1});
     });
-    this._libp2p.connectionManager.on('peer:disconnect', (_) => {
+    this._libp2p.connectionManager.on('peer:disconnect', (_:any) => {
       this._appEventEmitter.emit(AppEventId.CONTEXT, {connections: this._libp2p.connections.size});
     });
 
@@ -63,6 +63,7 @@ export class Node {
     ]);
     this._propagateEvents(events);
     this._appEventEmitter.emit(AppEventId.CONTEXT, {status: 'online', id: this.peerId.toB58String()});
+    this._appEventEmitter.start();
 
     // await delayW(() => this._appEventEmitter.emit(AppEventId.CONTEXT, {asRelay: this._config.natType === NatType.OpenInternet}));
     // Setup periodic ping to keep 'online' property up to date
@@ -70,13 +71,12 @@ export class Node {
     // this._libp2p._config.relay.enabled = true;
     // await this.stop();
     // await this.start();
-
-
   }
 
   public async stop() {
     await this._libp2p.stop();
     this._appEventEmitter.emit(AppEventId.CONTEXT, {status: 'offline', id: this.peerId.toB58String()});
+    this._appEventEmitter.stop();
   }
 
   public me(): PeerDomain {

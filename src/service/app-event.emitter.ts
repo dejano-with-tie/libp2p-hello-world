@@ -3,7 +3,9 @@ import {delay, inject, singleton} from "tsyringe";
 import Download from "../db/model/download.model";
 import {SseIoHandler} from "../gateway/io/handlers/sseIoHandler";
 import {DownloadFile} from "../usecase/download-file";
-import {delayW} from "../utils";
+
+const {setDelayedInterval, clearDelayedInterval} = require('set-delayed-interval')
+
 
 export enum AppEventId {
   MONITOR = 'monitor',
@@ -17,6 +19,7 @@ export enum AppEventId {
 export class AppEventEmitter extends EventEmitter {
 
   private context = {};
+  private _ctxTimeout: any;
 
   constructor(
     @inject(delay(() => SseIoHandler)) private sseHandler: SseIoHandler,
@@ -37,12 +40,18 @@ export class AppEventEmitter extends EventEmitter {
 
     if (event == AppEventId.CONTEXT) {
       this.context = {...this.context, ...args[0]};
-      await this.emitContext();
     }
     return super.emit(event, ...args);
   }
 
-  public async emitContext() {
-    await delayW(() => this.sseHandler.sse(AppEventId.CONTEXT, this.context))
+  public start(): void {
+    this._ctxTimeout = setDelayedInterval(() => {
+        this.sseHandler.sse(AppEventId.CONTEXT, this.context)
+      }, 5e3, 3e3
+    )
+  }
+
+  public stop(): void {
+    clearDelayedInterval(this._ctxTimeout);
   }
 }

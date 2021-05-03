@@ -12,7 +12,6 @@ export const onSocket = (socket: Socket) => {
   sockets.push(socket);
 
   logger.info('socket connected');
-  (async () => await container.resolve(AppEventEmitter).emitContext())();
   const register = (id: IoEventId, handler: any) => {
     socket.on(id, async (event) => {
       await handler(wrapIoEvent(id, event))
