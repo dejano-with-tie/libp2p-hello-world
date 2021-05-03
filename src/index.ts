@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import {Builder} from "builder-pattern";
 import {Config, defaultConfigBuilder, libp2pConfig} from "./config";
-import {discover, NatType} from "./nat";
+import {discover} from "./nat";
 import {run as gateway} from "./gateway";
 import {Db} from './db';
 import {container} from "tsyringe";
@@ -43,7 +43,8 @@ const multiple = async (n: number) => {
 }
 
 const singleNode = async () => {
-  const config = await libp2pConfig(builderFromEnv().build(), NatType.EndpointDependentMapping);
+  const natType = await discover();
+  const config = await libp2pConfig(builderFromEnv().build(), natType);
 
   // NOTE: container.register is used in src/index, src/db/index (repos) and src/gateway/io/index (socket)
   // @ts-ignore
@@ -60,8 +61,6 @@ const singleNode = async () => {
     encode: (input) => new Uint8Array(crypto.createHash('sha256').update(input).digest())
   });
   container.register("hasher", {useValue: sha256});
-
-  const natType = await discover();
 
   const node = new Node(config, container.resolve(FileService), container.resolve(AppEventEmitter));
   container.register(Node, {useValue: node});
