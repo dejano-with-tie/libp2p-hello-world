@@ -163,6 +163,9 @@ export const libp2pConfig = async (builder: ConfigBuilder): Promise<Config> => {
 
 export const updateRelayConfig = (config: Config, natType: NatType) => {
   const relayCapable = [NatType.FullCone].indexOf(natType) > -1;
+  if (relayCapable) {
+    logger.info('Acting as relay');
+  }
   config.natType = natType;
   // @ts-ignore
   config.libp2p.config.relay = {

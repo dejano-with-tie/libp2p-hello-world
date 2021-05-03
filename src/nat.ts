@@ -61,6 +61,7 @@ export class NatDiscovery {
     }
 
     return this._nat;
+    // return NatType.Unknown;
   }
 
   public start() {

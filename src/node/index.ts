@@ -28,15 +28,13 @@ export class Node extends EventEmitter {
   ) {
     super();
     this._natDiscovery = new NatDiscovery(_config.file.network.port, this._appEventEmitter);
-    (async () => {
-      this._libp2p = await Libp2p.create(_config.libp2p);
-      container.register<Libp2p>(Libp2p, {useValue: this._libp2p});
-    })();
   }
 
   public async start() {
-    updateRelayConfig(this._config, await this._natDiscovery.discover());
     this._natDiscovery.start();
+    updateRelayConfig(this._config, await this._natDiscovery.discover());
+    this._libp2p = await Libp2p.create(this._config.libp2p);
+    container.register<Libp2p>(Libp2p, {useValue: this._libp2p});
     await this._fileService.addShareDir(this._config.file.shareDirs);
     await this._fileService.syncSharedDirs();
     await this._startLibp2p();
