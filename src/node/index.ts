@@ -45,7 +45,8 @@ export class Node {
     this._libp2p.addressManager.on('change:addresses', async () => {
       for (let addr of this._libp2p.addressManager.getObservedAddrs()) {
         const {family, port} = addr.toOptions();
-        if (family === 4 && port === this._config.file.network.port && !this.alreadyChangedNat) {
+        // if (family === 4 && port === this._config.file.network.port && !this.alreadyChangedNat) {
+        if (family === 4 && !this.alreadyChangedNat) {
           logger.error('lets go as relay');
           // if (family === 4 && this._config.natType != NatType.OpenInternet) {
           await this.rebootAsRelay();
@@ -138,7 +139,11 @@ export class Node {
     } catch (e) {
       logger.error(e);
     }
-    this._config.natType = NatType.OpenInternet;
-    await this.start();
+    logger.info('stopped');
+    await setTimeout( async() => {
+      logger.info('starting');
+      this._config.natType = NatType.OpenInternet;
+      await this.start();
+    }, 5000)
   }
 }
