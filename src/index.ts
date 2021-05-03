@@ -1,6 +1,6 @@
-import "reflect-metadata";
 import {Builder} from "builder-pattern";
-import {Config, defaultConfigBuilder, libp2pConfig} from "./config";
+import "reflect-metadata";
+import { defaultConfigBuilder, libp2pConfig} from "./config";
 import {run as gateway} from "./gateway";
 import {Db} from './db';
 import {container} from "tsyringe";
@@ -10,44 +10,12 @@ import {hasher} from "multiformats";
 import {Node} from "./node";
 import {AppEventEmitter} from "./service/app-event.emitter";
 
-
-const main = async (runMultiple: boolean) => {
-  if (runMultiple) {
-    await multiple(3);
-  } else {
-    await singleNode();
-  }
-};
-
-/**
- * Run N nodes
- */
-const multiple = async (n: number) => {
-  // const natType = await discover(configBuilder.nodePort);
-
-  for await (const nodeIndex of Array(n).keys()) {
-    const basePort = 3000 + nodeIndex;
-    const config = await libp2pConfig(Builder(defaultConfigBuilder)
-      .alias(`local-${basePort}`)
-      .gatewayPort(basePort)
-      .nodePort(basePort + 5000)
-      .db(`./data-${basePort}.sqlite`)
-      .filePath(`./config/config.json`)
-      .peerIdFilePath(`./config/id.${basePort}.json`)
-      .build());
-
-    const db = await Db.createAndConnect(config.file.db);
-    gateway(config);
-  }
-}
-
-const singleNode = async () => {
+const main = async () => {
   const config = await libp2pConfig(builderFromEnv().build());
 
   // NOTE: container.register is used in src/index, src/db/index (repos) and src/gateway/io/index (socket)
   // @ts-ignore
-  container.register<Config>(Config, {useValue: config});
-  container.register<Config>("Config", {useValue: config});
+  container.register("Config", {useValue: config});
 
   const db = await Db.createAndConnect(config.file.db);
   // @ts-ignore
@@ -95,5 +63,5 @@ function builderFromEnv() {
 }
 
 (async () => {
-  await main(process.env.MULTIPLE === 'true');
+  await main();
 })();

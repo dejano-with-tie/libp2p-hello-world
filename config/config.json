@@ -5,10 +5,10 @@
     "bootstrapPeers": [
       "/ip4/18.211.111.71/tcp/8000/ipfs/QmdhNNtc8NEBX3bTP87e7JLj2WQJ1w2w1NtqWWd5WHg5XF"
     ],
-    "port": 8999
+    "port": 8000
   },
   "gateway": {
-    "port": 3999
+    "port": 3000
   },
   "peerIdFilePath": "./config/id.json"
 }

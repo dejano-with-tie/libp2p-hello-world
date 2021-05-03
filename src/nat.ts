@@ -1,5 +1,6 @@
 import logger from "./logger";
 import {AppEventEmitter, AppEventId} from "./service/app-event.emitter";
+import path from "path";
 
 const {setDelayedInterval, clearDelayedInterval} = require('set-delayed-interval');
 
@@ -27,11 +28,15 @@ export class NatDiscovery {
 
   public _discover(): Promise<NatDiscoverResponse> {
     return new Promise<NatDiscoverResponse>((resolve, reject) => {
-      const py = spawn('python2', ["./src/nat-discovery.py", "-j", `-p ${this._nodePort}`]);
+      const pyPath = path.resolve(__dirname, "./nat-discovery.py");
+      logger.info(pyPath)
+      const py = spawn('python2', [pyPath, "-j", `-p ${this._nodePort}`]);
       py.stdout.on('data', (data: any) => {
+        console.error(data.toString());
         resolve(data);
       });
       py.stderr.on('data', (data: any) => {
+        console.error(data);
         reject(data);
       });
     });

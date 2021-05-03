@@ -1,7 +1,11 @@
 # ---- Base Node ----
 FROM node:lts-alpine AS base
 # install node
-RUN apk add --update git build-base python3
+RUN apk add --update git build-base python3 python2
+## Create a group and user
+#RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+## Tell docker that all future commands should run as the appuser user
+#USER appuser
 # set working directory
 WORKDIR /usr/src/app
 # copy project file
@@ -26,7 +30,7 @@ COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/config ./config
 COPY --from=build /usr/src/app/node_modules ./node_modules
 
-
 # Run the built application when the container starts.
 EXPOSE 3000 8000
 CMD ["npm", "run", "serve"]
+#

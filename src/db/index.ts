@@ -33,7 +33,7 @@ export class Db {
       name: path,
       database: path,
       entities: [
-        __dirname + '/model/*.ts'
+        __dirname + '/model/*'
       ],
       synchronize: true
     });

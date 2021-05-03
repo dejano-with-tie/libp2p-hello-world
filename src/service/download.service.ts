@@ -74,7 +74,12 @@ export class DownloadService {
 
       await this.updateWithState(state, toDl);
       yield state;
-      // TODO: Integrity check
+      if (state.status === DownloadStatus.COMPLETED_UNVERIFIED
+        && toDl.remoteFileChecksum === (await this.fileService.checksum(toDl.downloadPath)).toString()) {
+        state.status = DownloadStatus.COMPLETED;
+        await this.updateWithState(state, toDl);
+        yield state;
+      }
     }
 
   }

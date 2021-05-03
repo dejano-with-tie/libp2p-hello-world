@@ -1,7 +1,9 @@
 import fs from "fs";
+import path from "path";
 
 const protobuf = require('protocol-buffers');
-const pbm = protobuf(fs.readFileSync('./src/protocol/proto/messages.proto'));
+// const pbm = protobuf(fs.readFileSync('./src/protocol/proto/messages.proto'));
+const pbm = protobuf(fs.readFileSync(path.resolve(__dirname, "../../messages.proto")));
 
 export enum MessageType {
   FIND_FILE = 1,

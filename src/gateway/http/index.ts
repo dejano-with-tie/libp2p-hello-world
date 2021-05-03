@@ -4,6 +4,7 @@ import {SearchController} from "./controller/search.controller";
 import {ErrorHandler} from "../exception/error.handler";
 import {DownloadController} from "./controller/download.controller";
 import {ShareController} from "./controller/share.controller";
+import {ConfigController} from "./controller/config.controller";
 
 export const registerRoutes = () => {
   const router = Router();
@@ -23,6 +24,10 @@ export const registerRoutes = () => {
   const shareCtl = container.resolve(ShareController);
   router
     .get('/api/share', eh.catchAsync(shareCtl.shared));
+
+  const configCtl = container.resolve(ConfigController);
+  router
+    .get('/api/config', eh.catchAsync(configCtl.getAll));
 
   return router;
 }

@@ -3,7 +3,7 @@ import fsPath from "path";
 import path from "path";
 import fs from "fs";
 import logger from './logger';
-import {Libp2pOptions,} from "libp2p";
+import {Libp2pOptions} from "libp2p";
 import {NatType} from "./nat";
 import {NOISE} from "libp2p-noise";
 import Bootstrap from "libp2p-bootstrap";
@@ -113,6 +113,7 @@ export const libp2pConfig = async (builder: ConfigBuilder): Promise<Config> => {
     },
     config: {
       nat: {
+        enabled: true,
         pmp: {
           enabled: true
         }

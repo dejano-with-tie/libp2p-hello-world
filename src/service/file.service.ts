@@ -199,10 +199,6 @@ export class FileService {
 
 
   private async toModel(fileStat: Stats, filePath: string, dir: Directory) {
-    const hasher: any = container.resolve("hasher");
-    const digest = await hasher.digest(await raw.encode(await fsp.readFile(filePath)))
-    const fileHash = new CID(1, raw.code, digest.bytes);
-
     const extName = path.extname(filePath);
     const name = path.basename(filePath, extName);
     const cid = await new CidDomain(name).digest();
@@ -213,7 +209,7 @@ export class FileService {
     const type = await this.fileTypeService.type(filePath);
 
     const file = new File();
-    file.checksum = fileHash.toString();
+    file.checksum = (await this.checksum(filePath)).toString();
     file.path = filePath;
     file.size = fileStat.size;
     file.mime = type.mime;
@@ -221,5 +217,11 @@ export class FileService {
     file.hashes = [hash];
     file.directory = dir;
     return file;
+  }
+
+  public async checksum(filePath: string) {
+    const hasher: any = container.resolve("hasher");
+    const digest = await hasher.digest(await raw.encode(await fsp.readFile(filePath)))
+    return new CID(1, raw.code, digest.bytes);
   }
 }
