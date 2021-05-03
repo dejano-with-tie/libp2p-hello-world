@@ -1,4 +1,3 @@
-import Libp2p from "../../../js-libp2p";
 import {PeerDomain} from "../protocol/model";
 import {Config} from "../config";
 import {FileService} from "../service/file.service";
@@ -9,6 +8,7 @@ import {AppEventEmitter, AppEventId} from "../service/app-event.emitter";
 import PeerId from "peer-id";
 import {NatType} from "../nat";
 import {delayW} from "../utils";
+import Libp2p from "libp2p";
 
 /**
  * Wraps libp2p node
@@ -18,6 +18,7 @@ export class Node {
   private _libp2p: Libp2p;
   // @ts-ignore
   private peerId: PeerId;
+  private alreadyChangedNat = false;
 
   constructor(
     private _config: Config,
@@ -44,7 +45,7 @@ export class Node {
     this._libp2p.addressManager.on('change:addresses', async () => {
       for (let addr of this._libp2p.addressManager.getObservedAddrs()) {
         const {family, port} = addr.toOptions();
-        if (family === 4 && port === this._config.file.network.port && this._config.natType != NatType.OpenInternet) {
+        if (family === 4 && port === this._config.file.network.port && !this.alreadyChangedNat) {
           logger.error('lets go as relay');
           // if (family === 4 && this._config.natType != NatType.OpenInternet) {
           await this.rebootAsRelay();
@@ -131,6 +132,7 @@ export class Node {
   }
 
   private async rebootAsRelay() {
+    this.alreadyChangedNat = true;
     try {
       await this.stop();
     } catch (e) {
