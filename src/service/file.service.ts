@@ -1,4 +1,4 @@
-import {delay, inject, injectable} from "tsyringe";
+import {container, delay, inject, injectable} from "tsyringe";
 import * as hasher from 'multiformats/hashes/hasher';
 import {FileRepository} from "../db/repository/file.repository";
 import {HashRepository} from "../db/repository/hash.repository";
@@ -18,7 +18,6 @@ import * as raw from 'multiformats/codecs/raw'
 import {FileTypeService} from "./file-type.service";
 import {ProtocolClient} from "../protocol/protocol.client";
 import {CidDomain} from "../protocol/model";
-import * as crypto from "crypto";
 
 const fsp = fs.promises;
 
@@ -200,17 +199,8 @@ export class FileService {
 
 
   private async toModel(fileStat: Stats, filePath: string, dir: Directory) {
-    // TODO: move to utils
-    const sha256 = hasher.from({
-      // As per multiformats table
-      // https://github.com/multiformats/multicodec/blob/master/table.csv#L9
-      name: 'sha2-256',
-      code: 0x12,
-
-      encode: (input) => new Uint8Array(crypto.createHash('sha256').update(input).digest())
-    })
-
-    const digest = await sha256.digest(await raw.encode(await fsp.readFile(filePath)))
+    const hasher: any = container.resolve("hasher");
+    const digest = await hasher.digest(await raw.encode(await fsp.readFile(filePath)))
     const fileHash = new CID(1, raw.code, digest.bytes);
 
     const extName = path.extname(filePath);

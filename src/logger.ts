@@ -1,4 +1,4 @@
-import winston from "winston";
+import winston, {Logger} from "winston";
 import {Format} from "logform";
 import {isProd} from "./utils";
 

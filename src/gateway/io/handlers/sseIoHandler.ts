@@ -12,12 +12,12 @@ export class SseIoHandler {
   ) {
   }
 
-  async sse(id: any, content: any): Promise<void> {
+  sse(id: any, content: any): void {
     emitOnEach(this.sockets, id, content);
   }
 
-  async sseEnd(id: any, content: any[]): Promise<void> {
-    await emitOnEach(this.sockets, id, content, true);
+  sseEnd(id: any, content: any[]): void {
+    emitOnEach(this.sockets, id, content, true);
   }
 
 }

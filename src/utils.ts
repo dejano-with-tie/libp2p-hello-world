@@ -57,3 +57,7 @@ export function getEnumKeyByEnumValue<T extends { [index: string]: string }>(myE
   }
   return keys[0];
 }
+
+export const delayW = async (fn: any, interval: number = 5e3) => {
+  await new Promise(_ => setTimeout(fn, interval))
+}

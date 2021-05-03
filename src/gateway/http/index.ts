@@ -15,10 +15,10 @@ export const registerRoutes = () => {
 
   const downloadCtl = container.resolve(DownloadController);
   router
+    .get('/api/download', eh.catchAsync(downloadCtl.getAll))
     .post('/api/download', eh.catchAsync(downloadCtl.queue))
     .post('/api/download/:id', eh.catchAsync(downloadCtl.changeState))
     .delete('/api/download/:id', eh.catchAsync(downloadCtl.delete))
-    .get('/api/download', eh.catchAsync(downloadCtl.getAll));
 
   const shareCtl = container.resolve(ShareController);
   router

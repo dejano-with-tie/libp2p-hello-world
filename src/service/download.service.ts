@@ -2,16 +2,16 @@ import {DownloadRepository} from "../db/repository/download.repository";
 import {delay, inject, singleton} from "tsyringe";
 import Download, {DownloadStatus} from "../db/model/download.model";
 import {error, ErrorCode} from "../gateway/exception/error.codes";
-import {ProtocolService} from "../protocol/protocol.service";
 import {ProtocolClient} from "../protocol/protocol.client";
 import {DownloadState, fromRemoteId} from "../protocol/model";
 import {FileService} from "./file.service";
-import {AppEventEmitter} from "./app-event.emitter";
+import {AppEventEmitter, AppEventId} from "./app-event.emitter";
 import {
   DeleteDownloadRequest,
   DownloadAction,
   DownloadActionRequest
 } from "../gateway/http/controller/dto/download-action.request";
+import {FileResponse} from "../gateway/http/controller/dto/file.response";
 
 @singleton()
 export class DownloadService {
@@ -21,7 +21,6 @@ export class DownloadService {
 
   constructor(
     private downloadRepository: DownloadRepository,
-    private protocolService: ProtocolService,
     private protocolClient: ProtocolClient,
     private fileService: FileService,
     @inject(delay(() => AppEventEmitter)) private appEventEmitter: AppEventEmitter
@@ -81,17 +80,19 @@ export class DownloadService {
   }
 
   public async queue(download: Download, override: boolean): Promise<Download> {
-    // TODO: this throws
-    const file = await this.protocolClient.getFile(fromRemoteId(download.remotePeerId), download.remoteFileId);
+    let file: FileResponse;
+    try {
+      file = await this.protocolClient.getFile(fromRemoteId(download.remotePeerId), download.remoteFileId);
+    } catch (e) {
+      throw error(ErrorCode.PEER_UNREACHABLE, e);
+    }
+
     const existInDb = await this.downloadRepository.findOneByChecksumAndInProgress(file.checksum);
     if (existInDb && !override) {
       throw error(ErrorCode.DOWNLOAD_IN_PROGRESS);
     }
 
-    // TODO: Check if it exist in file system
-
     if (existInDb) {
-      // TODO: Should emit app event message about abortion
       await this.downloadRepository.delete(existInDb.id);
       await this.fileService.deleteFromFs(existInDb.downloadPath);
     }
@@ -161,7 +162,7 @@ export class DownloadService {
     this.activeDownloads.set(id, state);
 
     await this.updateWithState(state, dl);
-    this.appEventEmitter.emit(AppEventEmitter.DOWNLOAD_RESUMED, dl);
+    this.appEventEmitter.emit(AppEventId.DOWNLOAD_RESUMED, dl, `Resume download for ${dl.downloadPath}`);
     return state;
   }
 

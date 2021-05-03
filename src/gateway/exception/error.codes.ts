@@ -17,6 +17,7 @@ export enum ErrorCode {
   PROTOCOL__NO_MESSAGE_RECEIVED = 'Protocol err; no message received',
   PROTOCOL__RESPONSE_ERROR_MESSAGE = 'Protocol err; peer responded with error',
   PROTOCOL__RECEIVED_INVALID_MESSAGE = 'Protocol err; received invalid message',
+  PEER_UNREACHABLE = 'Remote peer is unreachable',
 }
 
 // TODO: Need (http) status codes

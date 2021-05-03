@@ -3,8 +3,7 @@ import {Multiaddr} from "multiaddr";
 import CID from "cids";
 import * as json from 'multiformats/codecs/json'
 import {DownloadStatus} from "../db/model/download.model";
-import crypto from "crypto";
-import {hasher} from "multiformats";
+import {container} from "tsyringe";
 
 export interface PeerDomain {
   id: PeerId;
@@ -39,16 +38,8 @@ export class CidDomain {
   }
 
   public async digest(): Promise<CidDomain> {
-    // TODO: move to utils
-    const sha256 = hasher.from({
-      // As per multiformats table
-      // https://github.com/multiformats/multicodec/blob/master/table.csv#L9
-      name: 'sha2-256',
-      code: 0x12,
-
-      encode: (input) => new Uint8Array(crypto.createHash('sha256').update(input).digest())
-    })
-    const digest = await sha256.digest(await json.encode({name: this._name}))
+    const hasher: any = container.resolve("hasher");
+    const digest = await hasher.digest(await json.encode({name: this._name}))
     this._value = new CID(1, json.code, digest.bytes);
     return this;
   }

@@ -1,7 +1,7 @@
 import {delay, inject, singleton} from "tsyringe";
 import {Config} from "../config";
 import {DownloadService} from "../service/download.service";
-import {AppEventEmitter} from "../service/app-event.emitter";
+import {AppEventEmitter, AppEventId} from "../service/app-event.emitter";
 import Download from "../db/model/download.model";
 import {IoEventId} from "../gateway/io/model";
 import logger from "../logger";
@@ -20,7 +20,7 @@ export class DownloadFile {
 
   public async queue(download: Download, override: boolean) {
     const dl = await this.downloadService.queue(download, override);
-    this.appEventEmitter.emit(AppEventEmitter.DOWNLOAD_QUEUED, download);
+    this.appEventEmitter.emit(AppEventId.DOWNLOAD_QUEUED, download, `file ${download.downloadPath} queued`);
     // non blocking
     this.download(dl.id).catch((e) => {
       logger.error(e);

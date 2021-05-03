@@ -1,14 +1,15 @@
 import "reflect-metadata";
 import {Builder} from "builder-pattern";
 import {Config, defaultConfigBuilder, libp2pConfig} from "./config";
-import {discover} from "./nat";
+import {discover, NatType} from "./nat";
 import {run as gateway} from "./gateway";
 import {Db} from './db';
 import {container} from "tsyringe";
-import {bootstrap} from "./bootstrap";
 import {FileService} from "./service/file.service";
 import crypto from "crypto";
 import {hasher} from "multiformats";
+import {Node} from "./node";
+import {AppEventEmitter} from "./service/app-event.emitter";
 
 
 const main = async (runMultiple: boolean) => {
@@ -37,14 +38,12 @@ const multiple = async (n: number) => {
       .build(), natType);
 
     const db = await Db.createAndConnect(config.file.db);
-    const node = await bootstrap(config, container.resolve<FileService>(FileService));
     gateway(config);
   }
 }
 
 const singleNode = async () => {
-  const natType = await discover();
-  const config = await libp2pConfig(builderFromEnv().build(), natType);
+  const config = await libp2pConfig(builderFromEnv().build(), NatType.EndpointDependentMapping);
 
   // NOTE: container.register is used in src/index, src/db/index (repos) and src/gateway/io/index (socket)
   // @ts-ignore
@@ -62,14 +61,11 @@ const singleNode = async () => {
   });
   container.register("hasher", {useValue: sha256});
 
-  // const node = await Node.run(config, db);
-  const node = await bootstrap(config, container.resolve<FileService>(FileService));
+  const natType = await discover();
 
-  // const protocolClient = new ProtocolClient(node.libp2p);
-
-  // container.register(ProtocolClient, {useValue: protocolClient});
-  // container.register(ProtocolService, {useValue: new ProtocolService(node.libp2p, protocolClient)});
-
+  const node = new Node(config, container.resolve(FileService), container.resolve(AppEventEmitter));
+  container.register(Node, {useValue: node});
+  await node.start();
   gateway(config);
 }
 

@@ -1,13 +1,13 @@
 import {error, ErrorCode} from "../../../exception/error.codes";
 import Download, {DownloadStatus} from "../../../../db/model/download.model";
 
-export interface DownloadRequest {
+export interface QueueFileRequest {
   remotePeerId: string;
   remoteFileId: number;
   override: boolean;
 }
 
-export function toEntity(payload: DownloadRequest): Download {
+export function toEntity(payload: QueueFileRequest): Download {
   if (!payload.remotePeerId || !payload.remoteFileId || payload.override == undefined) {
     throw error(ErrorCode.BAD_REQUEST);
   }

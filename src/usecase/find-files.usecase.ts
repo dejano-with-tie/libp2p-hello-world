@@ -4,9 +4,10 @@ import {Config} from "../config";
 import logger from "../logger";
 import {HashRepository} from "../db/repository/hash.repository";
 import {FileService} from "../service/file.service";
-import {ProtocolService} from "../protocol/protocol.service";
 import {CidDomain, PeerDomain} from "../protocol/model";
 import {FileResponse} from "../gateway/http/controller/dto/file.response";
+import {Node} from "../node";
+import {ProtocolClient} from "../protocol/protocol.client";
 
 @singleton()
 export class FindFilesUsecase {
@@ -15,7 +16,8 @@ export class FindFilesUsecase {
     @inject("Config") private config: Config,
     private hashRepository: HashRepository,
     private fileService: FileService,
-    private protocolService: ProtocolService,
+    private protocolClient: ProtocolClient,
+    private node: Node,
   ) {
   }
 
@@ -29,8 +31,8 @@ export class FindFilesUsecase {
 
     logger.info(`--> searching for [${cid.toString()}]`);
 
-    yield (await this.fileService.find(cid)).map(f => FileResponse.fromModel(f, this.protocolService.me()));
-    for await (const files of this.protocolService.findFiles(cid)) {
+    yield (await this.fileService.find(cid)).map(f => FileResponse.fromModel(f, this.node.me()));
+    for await (const files of this.protocolClient.findFiles(cid)) {
       yield files;
     }
 

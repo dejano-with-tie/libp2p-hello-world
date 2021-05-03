@@ -13,6 +13,7 @@ import map from "it-map";
 import {FileResponse} from "../gateway/http/controller/dto/file.response";
 import Connection from "libp2p-interfaces/src/connection/connection";
 import pTimeout from "p-timeout";
+import {transform} from "streaming-iterables";
 
 const filter = require('it-filter')
 
@@ -53,6 +54,29 @@ export class ProtocolClient {
   }
 
   /**
+   * Queries the network in parallel for given key (filename).
+   *
+   * First queries the network to find out which peers have the given key.
+   * Secondly, queries each remote peer about key details.
+   * Second operation is executed in parallel.
+   *
+   * @param key content-addressed identifier (filename)
+   * @returns yields array of files from each provider (peer)
+   */
+  public async* findFiles(key: CidDomain): AsyncGenerator<FileResponse[]> {
+    const files: AsyncIterableIterator<FileResponse[]> = pipe(
+      this.findProviders(key),
+      transform(1000, (peer: PeerDomain) => {
+        return this.findFilesOnPeer(key, peer)
+      })
+    )
+
+    for await (const file of files) {
+      yield file;
+    }
+  }
+
+  /**
    * Dials remote peer to find files for given key
    *
    * @async
@@ -60,7 +84,7 @@ export class ProtocolClient {
    * @param peer
    * @returns FileDomain[] files
    */
-  public async findFiles(key: CidDomain, peer: PeerDomain): Promise<FileResponse[]> {
+  public async findFilesOnPeer(key: CidDomain, peer: PeerDomain): Promise<FileResponse[]> {
     logger.info(`Searching for file '${key.name}' on provider '${peer.id.toB58String()}'`);
     // await new Promise(resolve => setTimeout(resolve, this.randomIntFromInterval(1_000, 20_000)));
 
@@ -105,7 +129,6 @@ export class ProtocolClient {
   public async* getFileContent(peer: PeerDomain, fileId: number, offset: number = 0): AsyncIterable<Message> {
     // note: dial protocol throws exception
     const stream = (await this.node?.dialProtocol(peer.id, this._protocol)).stream;
-    // return yield* this.rpc.sendMessage(Message.getFileContent(fileId), stream);
     const response: AsyncIterable<Message> = this.rpc.sendMessage(Message.getFileContent(fileId, offset), stream);
     try {
       for await (const chunk of response) {
@@ -174,10 +197,9 @@ export class ProtocolClient {
 
   private isRelayed() {
     return (peer: PeerDomain) => {
-      console.log(this.node.connections.get(peer.id.toB58String()))
       const conn: Connection | null = this.node.connectionManager.get(peer.id)
       if (conn) {
-        peer.relayedConn = conn.remoteAddr.toString().indexOf('p2p-circuit') > -1;
+        peer.relayedConn = conn.remoteAddr.toString().indexOf('p2p-circuit') > -1 || (conn.localAddr?.toString()?.indexOf('p2p-circuit') || 0) > -1;
       }
       return peer;
     };

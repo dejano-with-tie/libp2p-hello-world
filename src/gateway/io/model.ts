@@ -1,6 +1,6 @@
 export enum IoEventId {
   SEARCH = "search:details",
-  DOWNLOAD = "download",
+  DOWNLOAD = "download:progress",
   MONITOR = "monitor",
 }
 

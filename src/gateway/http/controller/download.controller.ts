@@ -1,6 +1,6 @@
 import express from "express";
 import {singleton} from "tsyringe";
-import {DownloadRequest, toEntity} from "./dto/download.request";
+import {QueueFileRequest, toEntity} from "./dto/queueFileRequest";
 import {DownloadRepository} from "../../../db/repository/download.repository";
 import {DownloadStatus} from "../../../db/model/download.model";
 import {DeleteDownloadRequest, DownloadActionRequest} from "./dto/download-action.request";
@@ -19,7 +19,7 @@ export class DownloadController {
   }
 
   queue = async (req: express.Request, res: express.Response, _: express.NextFunction) => {
-    const payload = req.body as DownloadRequest;
+    const payload = req.body as QueueFileRequest;
     await this.downloadFile.queue(toEntity(payload), payload.override);
     res.json({});
   }
