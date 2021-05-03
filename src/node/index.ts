@@ -43,17 +43,8 @@ export class Node {
 
     await this._fileService.publishFiles();
     this._libp2p.addressManager.on('change:addresses', async () => {
-      for (let addr of this._libp2p.addressManager.getObservedAddrs()) {
-        const {family, port} = addr.toOptions();
-        // if (family === 4 && port === this._config.file.network.port && !this.alreadyChangedNat) {
-        if (family === 4 && !this.alreadyChangedNat) {
-          logger.error('lets go as relay');
-          // if (family === 4 && this._config.natType != NatType.OpenInternet) {
-          await this.rebootAsRelay();
-          // go as relay
-        }
-      }
-      console.log(this._libp2p.addressManager.getObservedAddrs().map(a => a.toString()));
+      logger.info('address changed')
+      logger.info(this._libp2p.addressManager.getObservedAddrs().map(a => a.toString()));
     });
     this._libp2p.connectionManager.on('peer:connect', (_) => {
       // +1 because this is emitted after connection is added to the store
@@ -115,7 +106,8 @@ export class Node {
         message = message.concat(`(${original.remotePeer.toB58String()}) `);
       }
       if (original.remoteAddr) {
-        message = message.concat(`${original.remoteAddr.toString()}`);
+        const addr = original.remoteAddr.toB58String ? original.remoteAddr.toB58String() : original.remoteAddr.toString();
+        message = message.concat(`${addr}`);
       }
 
       if (!original.remotePeer && !original.remoteAddr) {
