@@ -142,8 +142,8 @@ export class Node {
     logger.info('stopped');
     await setTimeout( async() => {
       logger.info('starting');
-      this._config.natType = NatType.OpenInternet;
-      await this.start();
+      // this._config.natType = NatType.OpenInternet;
+      await this._libp2p.start();
     }, 5000)
   }
 }
