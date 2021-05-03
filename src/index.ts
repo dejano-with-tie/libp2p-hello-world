@@ -1,7 +1,6 @@
 import "reflect-metadata";
 import {Builder} from "builder-pattern";
 import {Config, defaultConfigBuilder, libp2pConfig} from "./config";
-import {discover} from "./nat";
 import {run as gateway} from "./gateway";
 import {Db} from './db';
 import {container} from "tsyringe";
@@ -24,7 +23,7 @@ const main = async (runMultiple: boolean) => {
  * Run N nodes
  */
 const multiple = async (n: number) => {
-  const natType = await discover();
+  // const natType = await discover(configBuilder.nodePort);
 
   for await (const nodeIndex of Array(n).keys()) {
     const basePort = 3000 + nodeIndex;
@@ -35,7 +34,7 @@ const multiple = async (n: number) => {
       .db(`./data-${basePort}.sqlite`)
       .filePath(`./config/config.json`)
       .peerIdFilePath(`./config/id.${basePort}.json`)
-      .build(), natType);
+      .build());
 
     const db = await Db.createAndConnect(config.file.db);
     gateway(config);
@@ -43,8 +42,7 @@ const multiple = async (n: number) => {
 }
 
 const singleNode = async () => {
-  const natType = await discover();
-  const config = await libp2pConfig(builderFromEnv().build(), natType);
+  const config = await libp2pConfig(builderFromEnv().build());
 
   // NOTE: container.register is used in src/index, src/db/index (repos) and src/gateway/io/index (socket)
   // @ts-ignore
@@ -89,6 +87,9 @@ function builderFromEnv() {
 
   if (process.env.PEER_ID) {
     builder.peerIdFilePath(process.env.PEER_ID);
+  }
+  if (process.env.BOOTSTRAP) {
+    builder.bootstrap(process.env.BOOTSTRAP);
   }
   return builder;
 }

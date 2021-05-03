@@ -29,6 +29,7 @@ export interface ConfigBuilder {
   gatewayPort?: number;
   filePath: string;
   peerIdFilePath: string;
+  bootstrap?: string;
   downloadDirPath: string;
   sharedDirs: SharedDir[];
 }
@@ -82,7 +83,7 @@ function updateDirPathsRelativeToHomedir(fileConfig: FileConfig) {
   }));
 }
 
-export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Promise<Config> => {
+export const libp2pConfig = async (builder: ConfigBuilder): Promise<Config> => {
   const fileConfig: FileConfig = await from(builder);
   const peer = await peerId(builder.peerIdFilePath);
 
@@ -113,7 +114,7 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
     config: {
       nat: {
         pmp: {
-          enabled: false
+          enabled: true
         }
       },
       peerDiscovery: {
@@ -142,11 +143,11 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
           enabled: true,
         },
         advertise: {
-          enabled: natType === NatType.OpenInternet,
+          enabled: false,
         },
         hop: {
-          enabled: natType === NatType.OpenInternet,
-          active: natType === NatType.OpenInternet,
+          enabled: false,
+          active: false,
         }
       }
     }
@@ -156,10 +157,28 @@ export const libp2pConfig = async (builder: ConfigBuilder, natType: NatType): Pr
   return {
     libp2p: libp2pConfig,
     file: fileConfig,
-    natType
+    natType: NatType.Unknown
   };
 }
 
+export const updateRelayConfig = (config: Config, natType: NatType) => {
+  const relayCapable = [NatType.FullCone].indexOf(natType) > -1;
+  config.natType = natType;
+  // @ts-ignore
+  config.libp2p.config.relay = {
+    enabled: true,
+    autoRelay: {
+      enabled: true,
+    },
+    advertise: {
+      enabled: relayCapable,
+    },
+    hop: {
+      enabled: relayCapable,
+      active: relayCapable,
+    }
+  }
+}
 const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
   const configFilePath = fsPath.join(__dirname, '..', builder.filePath);
   const fileConfig: FileConfig = loadFile(configFilePath);
@@ -171,6 +190,7 @@ const from = async (builder: ConfigBuilder): Promise<FileConfig> => {
   fileConfig.peerIdFilePath = builder.peerIdFilePath || fileConfig.peerIdFilePath;
   fileConfig.downloadDirPath = builder.downloadDirPath || fileConfig.downloadDirPath;
   fileConfig.shareDirs = builder.sharedDirs || fileConfig.shareDirs;
+  fileConfig.network.bootstrapPeers = builder.bootstrap ? [builder.bootstrap] : fileConfig.network.bootstrapPeers;
 
   return fileConfig;
 };

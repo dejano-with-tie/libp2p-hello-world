@@ -3,12 +3,14 @@ import {delay, inject, singleton} from "tsyringe";
 import Download from "../db/model/download.model";
 import {SseIoHandler} from "../gateway/io/handlers/sseIoHandler";
 import {DownloadFile} from "../usecase/download-file";
+import {NatType} from "../nat";
 
 const {setDelayedInterval, clearDelayedInterval} = require('set-delayed-interval')
 
 
 export enum AppEventId {
   MONITOR = 'monitor',
+  NAT = 'nat',
   CONTEXT = 'context',
   DOWNLOAD_QUEUED = 'download:status:queued',
   DOWNLOAD_COMPLETED = 'download:status:completed',
@@ -18,7 +20,12 @@ export enum AppEventId {
 @singleton()
 export class AppEventEmitter extends EventEmitter {
 
-  private context = {};
+  private context = {
+    status: 'offline',
+    connections: 0,
+    nat: NatType[NatType.Unknown],
+    id: ''
+  };
   private _ctxTimeout: any;
 
   constructor(
@@ -29,6 +36,10 @@ export class AppEventEmitter extends EventEmitter {
     this.on(AppEventId.DOWNLOAD_RESUMED, async (data: Download) => {
       await this.sseHandler.sse(AppEventId.DOWNLOAD_RESUMED, data);
       await downloadFile.download(data.id);
+    });
+
+    this.on(AppEventId.NAT, async (nat: NatType) => {
+      this.context = {...this.context, ...{nat: NatType[nat]}};
     });
   }
 

@@ -1,10 +1,75 @@
+import logger from "./logger";
+import {AppEventEmitter, AppEventId} from "./service/app-event.emitter";
+
+const {setDelayedInterval, clearDelayedInterval} = require('set-delayed-interval');
+
+const {spawn} = require('child_process');
+
 export enum NatType {
-  OpenInternet,
-  EndpointIndependentMapping,
-  EndpointDependentMapping
+  FullCone = 'FullCone',
+  Unknown = 'Unknown',
 }
 
-export const discover = async () => {
-  // TODO: Missing implementation
-  return process.env.NAT ? NatType.OpenInternet : NatType.EndpointDependentMapping;
+interface NatDiscoverResponse {
+  external_ip: string;
+  external_port: number;
+  type: string;
+}
+
+export class NatDiscovery {
+
+  private _nat: NatType
+  private _timeout: any;
+
+  constructor(private _nodePort: number, private _appEventEmitter: AppEventEmitter) {
+    this._nat = NatType.Unknown;
+  }
+
+  public _discover(): Promise<NatDiscoverResponse> {
+    return new Promise<NatDiscoverResponse>((resolve, reject) => {
+      const py = spawn('python2', ["./src/nat-discovery.py", "-j", `-p ${this._nodePort}`]);
+      py.stdout.on('data', (data: any) => {
+        resolve(data);
+      });
+      py.stderr.on('data', (data: any) => {
+        reject(data);
+      });
+    });
+  }
+
+  async discover(): Promise<NatType> {
+    let response: NatDiscoverResponse;
+    let nat: NatType;
+    try {
+      response = JSON.parse((await this._discover()).toString())
+      logger.info(`NAT Discovery: ${response.type}`);
+    } catch (e) {
+      logger.error(e);
+      this._nat = NatType.Unknown;
+      return this._nat;
+    }
+
+    if ('Full Cone' == response.type || 'Open Internet (no NAT)' == response.type) {
+      nat = NatType.FullCone;
+    } else {
+      nat = NatType.Unknown;
+    }
+
+    if (this._nat !== nat) {
+      this._appEventEmitter.emit(AppEventId.NAT, nat);
+      this._nat = nat;
+    }
+
+    return this._nat;
+  }
+
+  public start() {
+    // this._timeout = setDelayedInterval(async () => {
+    //   await this.discover();
+    // }, 60e3, 0);
+  }
+
+  public stop() {
+    clearDelayedInterval(this._timeout);
+  }
 }
